@@ -1,0 +1,3 @@
+font_size: 50
+max_width: 768
+stable_diffustion_path: '/home/wfh/models/stable-diffusion'
