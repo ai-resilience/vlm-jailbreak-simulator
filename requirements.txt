@@ -1,0 +1,9 @@
+torch
+torchvision
+torchaudio
+transformers
+accelerate
+spacy
+datasketch
+protobuf
+sentencepiece

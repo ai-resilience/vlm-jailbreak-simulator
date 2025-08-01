@@ -34,6 +34,7 @@ def get_method_class(method):
 def init_method(method_class,method_config):
 
     output = method_class(**method_config)
+    #output.get_model_and_tokenizer(model_name)
     print("output")
     print(output)
     return output

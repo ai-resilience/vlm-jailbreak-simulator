@@ -1,7 +1,10 @@
 #!/bin/bash
+# Install build dependencies first
+pip install setuptools-rust
+pip install meson-python
+pip install wheel
 
-#---- install requirement packages ----
-pip install torch torchvision torchaudio
+# Install other packages
 pip install huggingface-hub
 pip install transformers==4.45.2
 pip install spacy
@@ -16,12 +19,24 @@ pip install opencv-python-headless
 pip install webdataset
 pip install scikit-image
 pip install visual_genome
-pip install peft
+
+# Install peft with specific version
+pip install peft==0.4.0
+
 pip install decord
 pip install wandb
 pip install seaborn
-pip install vllm
+
+# Install vllm with pre-built wheels to avoid compilation issues
+pip install vllm --no-build-isolation
+
+# Install transformers again to ensure correct version
 pip install transformers==4.45.2
+
+# Install fastchat
 pip install fastchat
-pip uninstall peft
-pip install peft==0.4.0 
+
+# Force reinstall peft to ensure correct version
+pip install --force-reinstall peft==0.4.0
+
+echo "Installation completed!" 
