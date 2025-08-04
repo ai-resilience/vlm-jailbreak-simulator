@@ -113,8 +113,9 @@ class Visual_Adv:
         return adv_img_prompt
 
     def PGD_constrained(self, image_path):
-        img = Image.open(image_path).convert('RGB')
-        img = self.model.vis_processor(img, return_tensors='pt')["pixel_values"].to(self.model.device)
+        img_pil = Image.open(image_path).convert('RGB')
+
+        img = self.model.vis_processor(img_pil, return_tensors='pt')["pixel_values"].to(self.model.device)
 
         adv_noise = torch.rand_like(img).to(self.model.device) * 2 * self.epsilon - self.epsilon
         x = self.denormalize(img).clone().to(self.model.device)
@@ -124,31 +125,34 @@ class Visual_Adv:
         adv_noise.retain_grad()
         self.model.model.requires_grad_(False)
 
-        for t in tqdm(range(self.n_iters+1)):
+        pbar = tqdm(range(self.n_iters+1))
+
+        for t in pbar:
             batch_targets = random.sample(self.targets, self.batch_size)
 
             x_adv = x + adv_noise            
             x_adv = self.normalize(x_adv)
 
-            target_loss = self.model.compute_loss_batch(x_adv, batch_targets)
+            target_loss = self.model.compute_loss_batch(x_adv, batch_targets, img_pil)
             target_loss.backward()
 
             adv_noise.data = (adv_noise.data - self.alpha * adv_noise.grad.detach().sign()).clamp(-self.epsilon, self.epsilon)
             adv_noise.data = (adv_noise.data + x.data).clamp(0, 1) - x.data
             adv_noise.grad.zero_()
 
-            print("target_loss: %f" % (
-                target_loss.item())
-                  )
+            pbar.set_description(f"target_loss: {target_loss.item():.4f}")
 
             if t % 100 == 0:
+                
                 print('######### Output - Iter = %d ##########' % t)     
-
+                print("target_loss: %f" % (
+                target_loss.item())
+                  )
                 x_adv = x + adv_noise
                 x_adv = self.normalize(x_adv)           
 
                 adv_img_prompt = self.denormalize(x_adv).detach().cpu()
-                adv_img_prompt = adv_img_prompt.squeeze(0)                                                                
+                adv_img_prompt = adv_img_prompt.squeeze(0) 
                 # save_image(adv_img_prompt, '%s/bad_prompt_temp_%d.bmp' % (self.save_dir, t))
         return adv_img_prompt
     

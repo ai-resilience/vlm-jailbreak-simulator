@@ -5,7 +5,9 @@ model:
   end_sym: "###"
   low_resource: False
   prompt_template: '###Human: {} ###Assistant: '
-  ckpt: 'please set this value to the path of pretrained checkpoint'
+  #ckpt: 'please set this value to the path of pretrained checkpoint'
+  ckpt: 'checkpoints/pretrained_minigpt4.pth'
+  #ckpt: 'Vision-CAIR/vicuna'
 
 
 

@@ -7,3 +7,14 @@ spacy
 datasketch
 protobuf
 sentencepiece
+omegaconf
+iopath
+timm
+opencv-python-headless
+peft
+decord
+webdataset
+wandb
+matplotlib
+scikit-image
+visual_genome

@@ -13,8 +13,10 @@ from torchvision import transforms
 #from vllm import SamplingParams
 from accelerate.utils import find_executable_batch_size
 
-#import yaml
+import yaml
 import base64
+
+import tqdm
 
 
 # Set this to disable warning messages in the generation mode.
@@ -22,7 +24,7 @@ transformers.utils.logging.set_verbosity_error()
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Running red teaming with baseline methods.")
-    parser.add_argument("--model_name", type=str, default="llava-hf/llava-1.5-7b-hf",
+    parser.add_argument("--model_name", type=str, 
                         help="The name of the model in the models config file")
     parser.add_argument("--models_config_file", type=str, default='./configs/model_configs/models.yaml',
                         help="The path to the config file with model hyperparameters")
@@ -48,18 +50,18 @@ def main():
     print(args)
 
     # Load model config file
-    # config_file = f"configs/model_configs/models.yaml" if not args.models_config_file else args.models_config_file
-    # with open(config_file) as file:
-    #     model_configs = yaml.full_load(file)
-    # print(model_configs[args.model_name])
-    # num_gpus = model_configs[args.model_name].get('num_gpus', 0)
-    # # check num gpus available to see if greater than num_gpus in config
-    # num_gpus_available = torch.cuda.device_count()
-    # if num_gpus_available != num_gpus:
-    #     print(f"Warning: num_gpus in config ({num_gpus}) does not match num_gpus available ({num_gpus_available}). Using {num_gpus_available} GPUs.")
-    #     num_gpus = num_gpus_available
-    # model_config = model_configs[args.model_name]['model']
-    # model_config['num_gpus'] = num_gpus
+    config_file = f"configs/model_configs/models.yaml" if not args.models_config_file else args.models_config_file
+    with open(config_file) as file:
+        model_configs = yaml.full_load(file)
+    print(model_configs[args.model_name])
+    num_gpus = model_configs[args.model_name].get('num_gpus', 0)
+    # check num gpus available to see if greater than num_gpus in config
+    num_gpus_available = torch.cuda.device_count()
+    if num_gpus_available != num_gpus:
+        print(f"Warning: num_gpus in config ({num_gpus}) does not match num_gpus available ({num_gpus_available}). Using {num_gpus_available} GPUs.")
+        num_gpus = num_gpus_available
+    model_config = model_configs[args.model_name]['model']
+    model_config['num_gpus'] = num_gpus
 
     # print("model_config", model_config)
     model_name = args.model_name
@@ -73,10 +75,10 @@ def main():
     with open(args.test_cases_path, 'r') as f:
         test_cases_data = json.load(f)
 
-    # generation_function = load_generation_function(model_config,
-    #                                             args.max_new_tokens,
-    #                                             test_cases_path=args.test_cases_path,
-    #                                             generate_with_vllm=args.generate_with_vllm)
+    generation_function = load_generation_function(model_config,
+                                                args.max_new_tokens,
+                                                test_cases_path=args.test_cases_path,
+                                                )
 
     returned_data = {}
 
@@ -110,8 +112,8 @@ def main():
     # ==== Generate ====
     print('Generating completions...')
     image_path = os.path.join(args.test_cases_path.split('/')[0] , 'images')
-    #generations = generation_function(test_cases=[t['test_case'] for t in test_cases])
-    generations = generate_response(model_name, test_cases, image_path)
+    generations = generation_function(test_cases=[t['test_case'] for t in test_cases])
+    #generations = generate_response(model_name, test_cases, image_path)
     print('Done')
 
     # ==== Unflatten into dict of {behavior_id: [{test_case: t, generation: g}, ..], ...}
@@ -186,7 +188,7 @@ def _api_model_generate(model, test_cases, **generation_kwargs):
         return model.generate(prompts=list(prompts), images=list(images), **generation_kwargs)   
     return model.generate(prompts=test_cases, **generation_kwargs)
 
-def load_generation_function(model_config, max_new_tokens, test_cases_path, generate_with_vllm=False):
+def load_generation_function(model_config, max_new_tokens, test_cases_path):
     model_name_or_path = model_config['model_name_or_path']
 
     if model_name_or_path in dir(multimodalmodels):

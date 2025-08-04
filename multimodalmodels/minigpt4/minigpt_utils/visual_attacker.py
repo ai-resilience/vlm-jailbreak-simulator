@@ -5,7 +5,7 @@ from ..minigpt_utils import prompt_wrapper, generator
 from torchvision.utils import save_image
 
 import matplotlib.pyplot as plt
-import seaborn as sns
+# import seaborn as sns
 
 
 
@@ -159,27 +159,27 @@ class Attacker:
 
         return adv_img_prompt
 
-    def plot_loss(self):
+    # def plot_loss(self):
 
-        sns.set_theme()
-        num_iters = len(self.loss_buffer)
+    #     sns.set_theme()
+    #     num_iters = len(self.loss_buffer)
 
-        x_ticks = list(range(0, num_iters))
+    #     x_ticks = list(range(0, num_iters))
 
-        # Plot and label the training and validation loss values
-        plt.plot(x_ticks, self.loss_buffer, label='Target Loss')
+    #     # Plot and label the training and validation loss values
+    #     plt.plot(x_ticks, self.loss_buffer, label='Target Loss')
 
-        # Add in a title and axes labels
-        plt.title('Loss Plot')
-        plt.xlabel('Iters')
-        plt.ylabel('Loss')
+    #     # Add in a title and axes labels
+    #     plt.title('Loss Plot')
+    #     plt.xlabel('Iters')
+    #     plt.ylabel('Loss')
 
-        # Display the plot
-        plt.legend(loc='best')
-        plt.savefig('%s/loss_curve.png' % (self.args.save_dir))
-        plt.clf()
+    #     # Display the plot
+    #     plt.legend(loc='best')
+    #     plt.savefig('%s/loss_curve.png' % (self.args.save_dir))
+    #     plt.clf()
 
-        torch.save(self.loss_buffer, '%s/loss' % (self.args.save_dir))
+    #     torch.save(self.loss_buffer, '%s/loss' % (self.args.save_dir))
 
     def attack_loss(self, prompts, targets):
 

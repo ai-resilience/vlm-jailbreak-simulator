@@ -6,7 +6,7 @@ import os
 import csv
 from tqdm import tqdm 
 import numpy as np
-from multimodalmodels import MultiModalModel
+from multimodalmodels import HarmBenchMultiModalModel
 
 
 from eval_utils import compute_results_hashing, compute_results_classifier, compute_results_advbench
@@ -65,7 +65,7 @@ def main():
     # cls.llm_engine.tokenizer.tokenizer.truncation_side="left"
 
     # cls_params = SamplingParams(temperature=0.0, max_tokens=1)
-    cls = MultiModalModel(args.cls_path)
+    cls = HarmBenchMultiModalModel(args.cls_path)
 
     results = {}
     for behavior_id, data in tqdm(completions.items()):
