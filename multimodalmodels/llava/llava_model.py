@@ -20,6 +20,7 @@ class LLaVA_v1_5(MultiModalModel):
         self.tokenizer_kwargs = {"padding": False, "truncation": None, "max_length": None}
         self.vis_processor = self.processor.image_processor
 
+
     def generate(self, test_cases, image_dir, **generation_kwargs):
         generation_kwargs.setdefault('do_sample', False)
         generation_kwargs.setdefault('num_beams', 1)
