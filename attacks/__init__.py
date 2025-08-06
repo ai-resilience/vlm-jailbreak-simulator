@@ -5,7 +5,7 @@ _method_mapping = {
     #'FigStep': 'attacks.figstep',
     'FigStep': 'multi_attacks.figstep',
     'QR': 'attacks.qr',
-    'Query_Attack': 'attacks.query_attack',
+    'Query_Attack': 'image_attacks.UAP.query_attack',
     #'Visual_Adv': 'attacks.visual_adv',
     'Visual_Adv': 'image_attacks.UAP.visual_adv',
     'imgJP': 'attacks.imgjp'

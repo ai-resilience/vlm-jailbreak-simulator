@@ -64,7 +64,8 @@ class LLaVA_v1_5(MultiModalModel):
 
     def query(self, image, prompt):
         input = self.processor(text=f"Human: {prompt} <image> Assistant: ", images=image, return_tensors="pt").to(self.device)
-        output = self.model.generate(**input,max_length=300)
+        #output = self.model.generate(**input,max_length=300) query_attack requires max_length greater than 300
+        output = self.model.generate(**input,max_new_tokens=512)
         outnpy = output.to("cpu").numpy()
         answer = self.processor.decode(outnpy[0], skip_special_tokens=True)
         answer = answer.split('Assistant: ')[-1].strip()

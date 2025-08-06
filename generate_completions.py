@@ -112,7 +112,7 @@ def main():
     # ==== Generate ====
     print('Generating completions...')
     image_path = os.path.join(args.test_cases_path.split('/')[0] , 'images')
-    generations = generation_function(test_cases=[t['test_case'] for t in test_cases])
+    generations = generation_function(test_cases=[t['test_case'] for t in test_cases], progress_bar=True)
     #generations = generate_response(model_name, test_cases, image_path)
     print('Done')
 

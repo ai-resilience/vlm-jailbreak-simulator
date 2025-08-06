@@ -18,3 +18,4 @@ wandb
 matplotlib
 scikit-image
 visual_genome
+git+https://github.com/openai/CLIP.git

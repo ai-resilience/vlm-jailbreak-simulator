@@ -48,9 +48,13 @@ class MiniGPT4:
             llm_message, chat_state, img_list = self.answer(chat_state, img_list)
         return llm_message
 
-    def generate(self, test_cases, image_dir, **generation_kwargs):
+    def generate(self, test_cases, image_dir, progress_bar=False, **generation_kwargs):
 
         outputs = []
+        if progress_bar:
+            from tqdm import tqdm
+            test_cases = tqdm(test_cases)
+
         for case in test_cases:
             image, prompt = case
             if isinstance(image, str):
