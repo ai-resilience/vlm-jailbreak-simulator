@@ -21,9 +21,9 @@ def parse_args():
                         help="The path to the behaviors file")
     parser.add_argument("--save_dir", type=str, default='./test_cases',
                         help="The directory used for saving test cases")
-    parser.add_argument("--behavior_start_idx", type=int, default=0,
+    parser.add_argument("--behavior_start_idx", type=int, default=None,
                         help="Start index for behaviors_path data (inclusive)")
-    parser.add_argument("--behavior_end_idx", type=int, default=200,
+    parser.add_argument("--behavior_end_idx", type=int, default=None,
                         help="End index for behaviors_path data (exclusive)")
     parser.add_argument("--behavior_ids_subset", type=str, default='',
                         help="An optional comma-separated list of behavior IDs, or a path to a newline-separated list of behavior IDs. If provided, this will override behavior_start_idx and behavior_end_idx for selecting a subset of behaviors.")
@@ -77,21 +77,21 @@ def main():
     # ==== Filtering existed runs =====
     method_class = get_method_class(method_name)
 
-    # if not args.overwrite:
-    #     filtered_behaviors = []
-    #     for behavior in behaviors:
-    #         # flatten csv row
-    #         behavior_id = behavior['BehaviorID']
-    #         test_case_file = method_class.get_output_file_path(save_dir, behavior_id, file_type='test_cases', run_id=args.run_id)
-    #         if not os.path.exists(test_case_file):
-    #             filtered_behaviors.append(behavior)
-    #         else:
-    #             print(f"===>Skipping {behavior_id}")
-    #     behaviors = filtered_behaviors
+    if not args.overwrite:
+        filtered_behaviors = []
+        for behavior in behaviors:
+            # flatten csv row
+            behavior_id = behavior['BehaviorID']
+            test_case_file = method_class.get_output_file_path(save_dir, behavior_id, file_type='test_cases', run_id=args.run_id)
+            if not os.path.exists(test_case_file):
+                filtered_behaviors.append(behavior)
+            else:
+                print(f"===>Skipping {behavior_id}")
+        behaviors = filtered_behaviors
         
-    #     if len(behaviors) == 0:
-    #         print("Found existing test cases for all current behaviors. Exiting.")
-    #         return
+        if len(behaviors) == 0:
+            print("Found existing test cases for all current behaviors. Exiting.")
+            return
 
     # ==== Init Method ====
     method = init_method(method_class, method_config)#, model_name)

@@ -1,1 +1,6 @@
 __pycache__/
+
+# Exclude experimental results dirs
+completions/
+results/
+test_cases/

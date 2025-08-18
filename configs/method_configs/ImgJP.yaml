@@ -2,4 +2,10 @@ train_num: 25
 eps: 16
 alpha: 1
 steps: 10
+constrained: True
 random_start: False
+target_model: LLaVA_v1_5
+target_path: data/derogatory_corpus.csv
+epsilon: 16
+alpha: 1
+batch_size: 8

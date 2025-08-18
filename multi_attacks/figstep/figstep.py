@@ -123,8 +123,6 @@ class FigStep(Baseattack):
         ]
 
         res = self.get_model_response(messages)
-        import ipdb
-        ipdb.set_trace()
         return res
 
 
