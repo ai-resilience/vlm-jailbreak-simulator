@@ -23,11 +23,13 @@ class FigStep(Baseattack):
 
     def text_to_image(self, text: str):
         #font = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeMonoBold.ttf", self.font_size)
+        font = ImageFont.load_default(size=self.font_size)
+        #ImageFont.truetype("arial.ttf", self.font_size)
         draw_kwargs = {
             "xy": (20, 10), # top-left corner of the text
             "text": text,   # text to draw
             "spacing": 11, # inter-line spacing
-            #"font": font,
+            "font": font,
         }
         l, t, r, b = self.get_draw_area(draw_kwargs)
         # sz = max(r,b)

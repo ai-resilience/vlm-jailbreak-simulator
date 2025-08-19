@@ -206,6 +206,8 @@ class DeltaJP:
 
         # x_adv = self.normalize(img_tensors + adv_noise)   
         x_adv = img_tensors + adv_noise   
+        adv_noise_norm = self.denormalize(adv_noise).detach().cpu().clip(0,1)[0]
+        transforms.ToPILImage()(adv_noise_norm).save('{}/{}.bmp'.format(self.attack_image_path, behavior_dict[0]['Behavior']))
 
         adv_img_prompt = self.denormalize(x_adv).detach().cpu().clip(0,1)
         #adv_img_prompt = x_adv.detach().cpu()
