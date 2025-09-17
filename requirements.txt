@@ -1,7 +1,7 @@
 torch
 torchvision
 torchaudio
-transformers
+transformers==4.54.1
 accelerate
 spacy
 datasketch
@@ -19,3 +19,4 @@ matplotlib
 scikit-image
 visual_genome
 git+https://github.com/openai/CLIP.git
+pandas
