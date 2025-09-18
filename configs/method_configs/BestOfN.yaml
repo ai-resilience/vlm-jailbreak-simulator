@@ -18,4 +18,5 @@ score_strategy: balanced
 diff_weight: 0.7
 length_weight: 0.3
 save_all_candidates: true
+generate_images: true
 image_root: data/multimodal_behavior_images
