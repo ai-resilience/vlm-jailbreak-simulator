@@ -47,3 +47,13 @@ python generate_completions.py --test_cases_path test_cases/DeltaJP_test_cases/D
 
 ## Evaluate completions
 python evaluate_completions.py --cls_path cais/HarmBench-Llama-2-13b-cls --behaviors_path data/behavior_datasets/harmbench_behaviors_multimodal_all.csv --completions_path completions/deltajp_completions.json --save_path results/deltajp_results.json --include_advbench_metric
+
+# Best-Of-N
+## Attack
+python generate_test_cases.py --method_name BestOfN --save_dir test_cases/BestOfN_test_cases --behaviors_path ./data/behavior_datasets/harmbench_behaviors_multimodal_all.csv
+
+## Generate completions
+python generate_completions.py --test_cases_path test_cases/DeltaJP_test_cases/BestOfN_test_cases.json --save_path completions/BestOfN_completions.json --model_name llava_v1_5
+
+## Evaluate completions
+python evaluate_completions.py --cls_path cais/HarmBench-Llama-2-13b-cls --behaviors_path data/behavior_datasets/harmbench_behaviors_multimodal_all.csv --completions_path completions/BestOfN_completions.json --save_path results/BestOfN_results.json --include_advbench_metric

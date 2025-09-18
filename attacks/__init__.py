@@ -4,6 +4,7 @@ import sys
 _method_mapping = {
     #'FigStep': 'attacks.figstep',
     'FigStep': 'multi_attacks.figstep',
+    'BestOfN': 'multi_attacks.best_of_n',
     'QR': 'attacks.qr',
     'Query_Attack': 'image_attacks.instance-specific.query_attack',
     #'Visual_Adv': 'attacks.visual_adv',
