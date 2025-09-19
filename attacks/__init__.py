@@ -2,15 +2,12 @@ import importlib
 import sys
 
 _method_mapping = {
-    #'FigStep': 'attacks.figstep',
     'FigStep': 'multi_attacks.figstep',
     'Hades': 'multi_attacks.hades',
-    'QR': 'attacks.qr',
-    'Query_Attack': 'image_attacks.instance-specific.query_attack',
-    #'Visual_Adv': 'attacks.visual_adv',
-    'Visual_Adv': 'image_attacks.UAP.visual_adv',
-    'ImgJP': 'image_attacks.UAP.imgjp',
-    'DeltaJP': 'image_attacks.instance-specific.deltajp'
+    'Query_Attack': 'image_attacks.query_attack',
+    'Visual_Adv': 'image_attacks.visual_adv',
+    'ImgJP': 'image_attacks.imgjp',
+    'DeltaJP': 'image_attacks.deltajp'
 }
 
 def get_method_class(method):
