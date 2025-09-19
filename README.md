@@ -55,7 +55,7 @@ Our evaluation results of MLLMs jailbreak attacks across six models are as follo
 ```
 conda create -n MMJ-env python=3.10
 conda activate MMJ-env
-./install_env.sh
+pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 ```
 
