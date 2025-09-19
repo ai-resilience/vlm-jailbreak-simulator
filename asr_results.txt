@@ -1,0 +1,7 @@
+# ASR Results Summary
+Model: FigStep  ASR: 0.0950
+Model: Visual_Adv  ASR: 0.5100
+Model: Query_Attack  ASR: 0.4975
+Model: ImgJP  ASR: 0.445
+Model: DeltaJP  ASR: 0.6273
+Model: Hades  ASR: 0.3725

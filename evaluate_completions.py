@@ -13,8 +13,16 @@ from eval_utils import compute_results_hashing, compute_results_classifier, comp
 # Set this to disable warning messages in the generation mode.
 transformers.utils.logging.set_verbosity_error()
 
+def save_asr_to_file(model_name, asr_value, file_path):
+    """ASR 결과를 txt 파일에 저장하는 함수"""
+    with open(file_path, 'a', encoding='utf-8') as f:
+        f.write(f"Model: {model_name}  ASR: {asr_value:.4f}\n")
+    print(f"ASR result saved to {file_path}: Model: {model_name}  ASR: {asr_value:.4f}")
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Running red teaming with baseline methods.")
+    parser.add_argument("--method_name", type=str,
+                        help="The name of the attack method being evaluated")
     parser.add_argument("--cls_path", type=str, default='cais/HarmBench-Llama-2-13b-cls',
                         help="The name or path of the classifier for computing ASR")
     parser.add_argument("--behaviors_path", type=str, default='./data/behavior_datasets/harmbench_behaviors_text_all.csv',
@@ -27,6 +35,8 @@ def parse_args():
                         help="Whether to include the AdvBench refusal metric")
     parser.add_argument("--num_tokens", type=int, default=512,
                         help="The number of tokens to evaluate")
+    parser.add_argument("--asr_results_file", type=str, default="asr_results.txt",
+                        help="The path to save ASR results summary")
     args = parser.parse_args()
     return args
 
@@ -92,7 +102,12 @@ def main():
         print(f"{i}. {behavior_id} === average asr: {success_mean}")
         success_rates.append(success_mean)
     
-    print("Average ASR: ", np.mean(success_rates))
+    average_asr = np.mean(success_rates)
+    print("Average ASR: ", average_asr)
+    
+    # ASR 결과를 파일에 저장
+    if args.method_name:
+        save_asr_to_file(args.method_name, average_asr, args.asr_results_file)
 
     # Make dirs to output_file if not yet exist
     os.makedirs(os.path.dirname(args.save_path), exist_ok=True) if os.path.dirname(args.save_path) else None
