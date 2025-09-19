@@ -4,14 +4,15 @@ from tqdm import tqdm
 import numpy as np
 import os
 import json
-import transformers
-import vllm
-import ray
-import fastchat
+
+#import transformers
+#import vllm
+#import ray
+#import fastchat
 
 class RedTeamingMethod:
-    use_ray = False
-    default_dependencies = [transformers, vllm, ray, fastchat]
+    #use_ray = False
+    #default_dependencies = [transformers, vllm, ray, fastchat]
 
     """
     A template for a red teaming method that generates test cases given a set of behaviors

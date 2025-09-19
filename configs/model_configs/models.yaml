@@ -36,23 +36,23 @@ llava_v1_5:
   model_type: open_source_multimodal
   num_gpus: 1
 
-llava_v1_6:
-model:
-  model_name_or_path: LLaVA_v1_6
-model_type: open_source_multimodal
-num_gpus: 1
+# llava_v1_6:
+# model:
+#   model_name_or_path: LLaVA_v1_6
+# model_type: open_source_multimodal
+# num_gpus: 1
 
-instructblip:
-  model:
-    model_name_or_path: InstructBLIP
-  model_type: open_source_multimodal
-  num_gpus: 1
+# instructblip:
+#   model:
+#     model_name_or_path: InstructBLIP
+#   model_type: open_source_multimodal
+#   num_gpus: 1
 
-qwen_vl_chat:
-  model:
-    model_name_or_path: Qwen_VL_Chat
-  model_type: open_source_multimodal
-  num_gpus: 1
+# qwen_vl_chat:
+#   model:
+#     model_name_or_path: Qwen_VL_Chat
+#   model_type: open_source_multimodal
+#   num_gpus: 1
 
 minigpt4:
   model:

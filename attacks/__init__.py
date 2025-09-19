@@ -2,13 +2,12 @@ import importlib
 import sys
 
 _method_mapping = {
-    #'FigStep': 'attacks.figstep',
     'FigStep': 'multi_attacks.figstep',
-    'QR': 'attacks.qr',
-    'Query_Attack': 'attacks.query_attack',
-    #'Visual_Adv': 'attacks.visual_adv',
-    'Visual_Adv': 'image_attacks.UAP.visual_adv',
-    'imgJP': 'attacks.imgjp'
+    'Hades': 'multi_attacks.hades',
+    'Query_Attack': 'image_attacks.query_attack',
+    'Visual_Adv': 'image_attacks.visual_adv',
+    'ImgJP': 'image_attacks.imgjp',
+    'DeltaJP': 'image_attacks.deltajp'
 }
 
 def get_method_class(method):
@@ -34,6 +33,7 @@ def get_method_class(method):
 def init_method(method_class,method_config):
 
     output = method_class(**method_config)
+    #output.get_model_and_tokenizer(model_name)
     print("output")
     print(output)
     return output

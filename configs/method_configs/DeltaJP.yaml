@@ -1,0 +1,11 @@
+train_num: 25
+eps: 16
+alpha: 0.5
+steps: 100
+constrained: True
+random_start: False
+target_model: LLaVA_v1_5
+target_path: data/optimizer_targets/harmbench_targets_multimodal.json
+image_path: data/multimodal_behavior_images/
+epsilon: 16
+batch_size: 8

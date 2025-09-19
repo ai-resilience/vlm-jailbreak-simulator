@@ -15,7 +15,8 @@ model:
   # generation configs
   prompt: ""
 
-  llama_model: "please set this value to the path of vicuna"
+  #llama_model: "please set this value to the path of vicuna"
+  llama_model: "Vision-CAIR/vicuna"
 
 preprocess:
     vis_processor:

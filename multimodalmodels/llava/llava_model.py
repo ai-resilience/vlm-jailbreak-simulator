@@ -8,17 +8,19 @@ from transformers import LlavaNextProcessor, LlavaNextForConditionalGeneration
 from transformers import BatchFeature
 from ..multimodalmodel import MultiModalModel
 from PIL import Image
+import tqdm
 
 
 class LLaVA_v1_5(MultiModalModel):
     def __init__(self):
-        self.device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
-        self.model = LlavaForConditionalGeneration.from_pretrained("llava-hf/llava-1.5-7b-hf", device_map="balanced")#.to(self.device)
-        self.processor = AutoProcessor.from_pretrained("llava-hf/llava-1.5-7b-hf", device_map="balanced")
+        self.model = LlavaForConditionalGeneration.from_pretrained("llava-hf/llava-1.5-7b-hf", device_map="auto")#.to(self.device)
+        self.device = self.model.device #torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
+        self.processor = AutoProcessor.from_pretrained("llava-hf/llava-1.5-7b-hf", num_additional_image_tokens=1)#, device_map="balanced")
         self.normalize = transforms.Normalize(mean=self.processor.image_processor.image_mean, std=self.processor.image_processor.image_std)
         self.preprocess = lambda x: self.processor.image_processor.preprocess(x, do_normalize=False, return_tensors='pt')['pixel_values'][0]
         self.tokenizer_kwargs = {"padding": False, "truncation": None, "max_length": None}
         self.vis_processor = self.processor.image_processor
+
 
     def generate(self, test_cases, image_dir, **generation_kwargs):
         generation_kwargs.setdefault('do_sample', False)
@@ -26,23 +28,54 @@ class LLaVA_v1_5(MultiModalModel):
         assert generation_kwargs['do_sample'] is False, "do_sample should be False"
         assert generation_kwargs['num_beams'] == 1, "num_beams should be 1"
         outputs = []
+        if generation_kwargs['progress_bar']:
+            test_cases = tqdm.tqdm(test_cases)
+        try:
+            generation_kwargs.pop('progress_bar')    
+        except:
+            pass
+        
         for case in test_cases:
             image, prompt = case
             if isinstance(image, str):
                 raw_image = Image.open(os.path.join(image_dir, image))
-
             conv_prompt = f"A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions. USER: <image>\n{prompt} ASSISTANT:"
 
-            inputs = self.processor(conv_prompt, raw_image, return_tensors='pt').to(self.device)
+            inputs = self.processor(images=raw_image, text=conv_prompt, return_tensors="pt").to(self.device)#['input_ids'][0]
+
+            #inputs = self.processor(conv_prompt, raw_image, return_tensors='pt').to(self.device)
             output = self.model.generate(**inputs, **generation_kwargs)
             output = self.processor.batch_decode(output, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
             outputs.append(output.rsplit('ASSISTANT:', 1)[-1].strip())
 
         return outputs
 
+
+    # def generate_backup(self, test_cases, image_dir, **generation_kwargs):
+    #     generation_kwargs.setdefault('do_sample', False)
+    #     generation_kwargs.setdefault('num_beams', 1)
+    #     assert generation_kwargs['do_sample'] is False, "do_sample should be False"
+    #     assert generation_kwargs['num_beams'] == 1, "num_beams should be 1"
+    #     outputs = []
+    #     for case in test_cases:
+    #         image, prompt = case
+    #         if isinstance(image, str):
+    #             raw_image = Image.open(os.path.join(image_dir, image))
+
+    #         conv_prompt = f"A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions. USER: <image>\n{prompt} ASSISTANT:"
+
+    #         inputs = self.processor(conv_prompt, raw_image, return_tensors='pt').to(self.device)
+    #         output = self.model.generate(**inputs, **generation_kwargs)
+    #         output = self.processor.batch_decode(output, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
+    #         outputs.append(output.rsplit('ASSISTANT:', 1)[-1].strip())
+
+    #     return outputs
+
+
     def query(self, image, prompt):
         input = self.processor(text=f"Human: {prompt} <image> Assistant: ", images=image, return_tensors="pt").to(self.device)
-        output = self.model.generate(**input,max_length=300)
+        #output = self.model.generate(**input,max_length=300) query_attack requires max_length greater than 300
+        output = self.model.generate(**input,max_new_tokens=512)
         outnpy = output.to("cpu").numpy()
         answer = self.processor.decode(outnpy[0], skip_special_tokens=True)
         answer = answer.split('Assistant: ')[-1].strip()
@@ -63,29 +96,35 @@ class LLaVA_v1_5(MultiModalModel):
         loss_fn = CrossEntropyLoss()
         return loss_fn(shift_logits, target_ids.view(-1))
 
-    def compute_loss_batch(self, x_adv, batch_targets):
+    def compute_loss_batch(self, x_adv, batch_targets, image_pil):
         batch_size = len(batch_targets)
         input_ids = []
         labels = []
         images = []
 
-        #self.processor.num_additional_tokens = 1
+        #self.processor.num_additional_tokens = 0
         #self.processor.num_additional_image_tokens = 1
+        if type(image_pil) == list:
+            batch_targets_zip = zip(batch_targets, image_pil)
+        else:
+            batch_targets_zip = zip(batch_targets, [image_pil] * batch_size)
 
         template =  "A chat between a curious user and an artificial intelligence assistant. \
         The assistant gives helpful, detailed, and polite answers to the user's questions. \
         USER: <image>\n ASSISTANT: {target}</s>"
         
-        for target in batch_targets:
+        for target, image_pil_ in batch_targets_zip:
             text = template.format(target=target)
-            input_id = self.processor.tokenizer(text, return_tensors = "pt")['input_ids'][0]
+            input_id = self.processor(images=image_pil_, text=text, return_tensors="pt")['input_ids'][0]
+            # input_id = self.processor.tokenizer(text, return_tensors="pt")['input_ids'][0]
             label = input_id.clone()
 
             sep = " ASSISTANT: "
             parts = text.split(sep)
             parts[0] += sep
 
-            instruction_len = len(self.processor.tokenizer(parts[0], return_tensors='pt')[0]) - 1
+            instruction_len = len(self.processor(images=image_pil_, text=parts[0], return_tensors="pt")['input_ids'][0]) - 1
+            # instruction_len = len(self.processor.tokenizer(parts[0], return_tensors='pt')[0]) - 1
             label[:instruction_len] = -100
 
             input_ids.append(input_id)
@@ -102,27 +141,22 @@ class LLaVA_v1_5(MultiModalModel):
         labels = labels[:, :self.processor.tokenizer.model_max_length].to(self.device)
         attention_mask = input_ids.ne(self.processor.tokenizer.pad_token_id).to(self.device)
 
-        images = [x_adv] * batch_size
+        if type(image_pil) == list:
+            images = x_adv
+            pixel_values = images
+        else:
+            images = [x_adv] * batch_size
+            pixel_values = torch.concat(images, axis = 0).to(self.device)
+    
 
-        pixel_values = torch.concat(images, axis = 0).to(self.device)
-
-        #import ipdb
-        #ipdb.set_trace()
-        
-        
         loss = self.model(
             input_ids = input_ids,
             attention_mask = attention_mask,
             labels = labels,
             pixel_values = pixel_values
         ).loss
-        
+
         return loss
-
-
-
-        
-
 
 
 class LLaVA_v1_6(MultiModalModel):

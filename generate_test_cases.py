@@ -6,7 +6,7 @@ import csv
 import torch
 import os
 from os.path import join
-from eval_utils import get_experiment_config
+#from eval_utils import get_experiment_config
 import pandas as pd
 # Set this to disable warning messages in the generation mode.
 transformers.utils.logging.set_verbosity_error()
@@ -21,9 +21,9 @@ def parse_args():
                         help="The path to the behaviors file")
     parser.add_argument("--save_dir", type=str, default='./test_cases',
                         help="The directory used for saving test cases")
-    parser.add_argument("--behavior_start_idx", type=int, default=0,
+    parser.add_argument("--behavior_start_idx", type=int, default=None,
                         help="Start index for behaviors_path data (inclusive)")
-    parser.add_argument("--behavior_end_idx", type=int, default=200,
+    parser.add_argument("--behavior_end_idx", type=int, default=None,
                         help="End index for behaviors_path data (exclusive)")
     parser.add_argument("--behavior_ids_subset", type=str, default='',
                         help="An optional comma-separated list of behavior IDs, or a path to a newline-separated list of behavior IDs. If provided, this will override behavior_start_idx and behavior_end_idx for selecting a subset of behaviors.")
@@ -33,6 +33,8 @@ def parse_args():
                         help="Whether to overwrite existing saved test cases")
     parser.add_argument("--verbose", action="store_true",
                         help="Whether to print out intermediate results")
+    #parser.add_argument("--model_name", type=str, default="llava-hf/llava-1.5-7b-hf",
+    #                    help="Whether to print out intermediate results")                        
     
     args = parser.parse_args()
     return args
@@ -42,6 +44,7 @@ def main():
     args = parse_args()
     print(args)
     method_name = args.method_name
+    #model_name = args.model_name
     save_dir = os.path.abspath(args.save_dir)
 
 
@@ -91,7 +94,7 @@ def main():
     #         return
 
     # ==== Init Method ====
-    method = init_method(method_class, method_config)
+    method = init_method(method_class, method_config)#, model_name)
 
 
     # ====== Run attack ======
