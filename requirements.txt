@@ -26,3 +26,4 @@ httpx
 Pillow
 PyYAML  
 beautifulsoup4
+anthropic
