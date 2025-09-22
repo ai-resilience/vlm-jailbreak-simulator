@@ -57,3 +57,13 @@ python generate_completions.py --test_cases_path test_cases/Hades_test_cases/had
 
 ## Evaluate completions
 python evaluate_completions.py --method_name Hades --cls_path cais/HarmBench-Llama-2-13b-cls --behaviors_path data/behavior_datasets/harmbench_behaviors_text_all.csv --completions_path completions/Hades_completions.json --save_path results/Hades_results.json --include_advbench_metric
+
+# JOOD
+## Attack
+python generate_test_cases.py --method_name JOOD --save_dir test_cases/JOOD_test_cases --behaviors_path data/behavior_datasets/harmbench_behaviors_text_all.csv
+
+## Generate completions
+python generate_completions.py --test_cases_path test_cases/JOOD_test_cases/JOOD_test_cases.json --save_path completions/JOOD_completions.json --model_name llava_v1_5 --behaviors_path data/behavior_datasets/harmbench_behaviors_text_all.csv
+
+## Evaluate completions
+python evaluate_completions.py --method_name JOOD --cls_path cais/HarmBench-Llama-2-13b-cls --behaviors_path data/behavior_datasets/harmbench_behaviors_text_all.csv --completions_path completions/JOOD_completions.json --save_path results/JOOD_results.json --include_advbench_metric

@@ -1,0 +1,25 @@
+# JOOD (Playing the Fool) Configuration
+# Out-of-Distribution Strategy for Jailbreaking LLMs and Multimodal LLMs
+
+# Core JOOD parameters
+scenarios: "bomb_explosive drugs firearms_weapons hack_information kill_someone social_violence suicide"
+harmful_image_dir: "datasets/AdvBenchM/images/harmful"
+harmless_image_dir: "datasets/AdvBenchM/images/harmless"
+prompt_dir: "datasets/AdvBenchM/prompts/all_instructions"
+
+# Augmentation strategy for text attacks
+# Text attack options: textmix_character_wise_interleave, textmix_concat, textmix_concat_vertically, etc.
+# Multimodal options: cutmix_original, mixup, cutmix_resizemix, randaug1
+aug: "textmix_character_wise_interleave"
+
+# Lambda values for mixing (space-separated string)
+lams: "0.5"
+
+# Model configuration
+model: "gpt-4-turbo-2024-04-09"
+max_tokens: "4096"
+temperature: "1.0"
+retry_limit: "10"
+
+# API key (loaded from api_keys.yaml)
+openai_key: "load_from_api_keys_yaml"
