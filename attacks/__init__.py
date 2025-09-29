@@ -4,6 +4,7 @@ import sys
 _method_mapping = {
     'FigStep': 'multi_attacks.figstep',
     'Hades': 'multi_attacks.hades',
+    'JOOD': 'multi_attacks.JOOD',
     'Query_Attack': 'image_attacks.query_attack',
     'Visual_Adv': 'image_attacks.visual_adv',
     'ImgJP': 'image_attacks.imgjp',
