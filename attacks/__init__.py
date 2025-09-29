@@ -8,7 +8,8 @@ _method_mapping = {
     'Query_Attack': 'image_attacks.query_attack',
     'Visual_Adv': 'image_attacks.visual_adv',
     'ImgJP': 'image_attacks.imgjp',
-    'DeltaJP': 'image_attacks.deltajp'
+    'DeltaJP': 'image_attacks.deltajp',
+    'BestOfN': 'multi_attacks.best_of_n'
 }
 
 def get_method_class(method):
