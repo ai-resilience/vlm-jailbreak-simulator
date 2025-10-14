@@ -18,16 +18,6 @@ python generate_completions.py --test_cases_path test_cases/Visual_Adv_test_case
 ## Evaluate completions
 python evaluate_completions.py --method_name Visual_Adv --cls_path cais/HarmBench-Llama-2-13b-cls --behaviors_path data/behavior_datasets/harmbench_behaviors_text_all.csv --completions_path completions/Visual_Adv_completions.json --save_path results/Visual_Adv_results.json --include_advbench_metric
 
-# Query_Attack
-## Attack
-python generate_test_cases.py --method_name Query_Attack --save_dir test_cases/Query_attack_test_cases
-
-## Generate completions
-python generate_completions.py --test_cases_path test_cases/Query_attack_test_cases/Query_attack_test_cases.json --save_path completions/Query_Attack_completions.json --model_name minigpt4
-
-## Evaluate completions
-python evaluate_completions.py --method_name Query_Attack --cls_path cais/HarmBench-Llama-2-13b-cls --behaviors_path data/behavior_datasets/harmbench_behaviors_text_all.csv --completions_path completions/Query_Attack_completions.json --save_path results/Query_Attack_results.json --include_advbench_metric
-
 # ImgJP 
 ## Attack
 python generate_test_cases.py --method_name ImgJP --save_dir test_cases/ImgJP_test_cases

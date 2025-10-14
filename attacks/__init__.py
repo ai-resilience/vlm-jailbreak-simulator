@@ -5,11 +5,10 @@ _method_mapping = {
     'FigStep': 'multi_attacks.figstep',
     'Hades': 'multi_attacks.hades',
     'JOOD': 'multi_attacks.JOOD',
-    'Query_Attack': 'image_attacks.query_attack',
+    'BestOfN': 'multi_attacks.best_of_n',
     'Visual_Adv': 'image_attacks.visual_adv',
     'ImgJP': 'image_attacks.imgjp',
-    'DeltaJP': 'image_attacks.deltajp',
-    'BestOfN': 'multi_attacks.best_of_n'
+    'DeltaJP': 'image_attacks.deltajp'
 }
 
 def get_method_class(method):
