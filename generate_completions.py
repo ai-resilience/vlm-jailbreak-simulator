@@ -129,7 +129,8 @@ def main():
     print('Saved')
 
 def generate_response(model_name, test_cases, image_path):
-    multi_modal_model = multimodalmodels.MultiModalModel(model_name)
+    #multi_modal_model = multimodalmodels.MultiModalModel(model_name)
+    multi_modal_model = multimodalmodels.HarmBenchMultiModalModel(model_name)
     batch_size = 20
     responses = []
     from tqdm import trange
