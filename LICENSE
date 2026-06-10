@@ -19,3 +19,61 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+
+====================================================================
+Scope of this License
+====================================================================
+
+The MIT License above applies ONLY to the original source code and
+documentation in this repository that was directly developed by
+ai.resilience as part of the VLM-Jailbreak-Simulator project.
+
+This repository also references, integrates with, vendors copies of, or
+downloads at runtime third-party source code, pre-trained model weights,
+datasets, closed-source APIs, and other assets (including fonts) that
+are NOT owned by ai.resilience. Such third-party materials are NOT
+covered by the MIT License above and remain subject to their own
+original licenses, notices, and use restrictions.
+
+Examples of upstream terms that apply to components actually exercised
+when running this simulator include — without limitation:
+
+  - the **Llama 2 Community License**, which governs the HarmBench
+    Llama-2-13b classifier downloaded for ASR evaluation and the
+    LLaVA v1.5 weights used as a target VLM;
+
+  - the **LLaMA Research License** and the **Vicuna delta-weights
+    terms**, which are *non-commercial* and govern the Vicuna weights
+    that the MiniGPT-4 target pipeline is built on;
+
+  - the **Tongyi Qianwen License Agreement**, which governs the
+    vendored Qwen-VL wrapper code;
+
+  - **BSD-3-Clause** and **Apache-2.0** terms that govern vendored
+    code copied or adapted from MiniGPT-4, JOOD, LLaVA, InstructBLIP /
+    LAVIS, HarmBench, and a number of Python packages;
+
+  - the **OpenAI Terms of Use** and content policy, which govern the
+    `gpt-3.5-turbo` and `gpt-4-turbo-2024-04-09` API calls made by the
+    Hades and JOOD attack pipelines;
+
+  - the original copyright of the **Arial typeface** (Monotype /
+    Microsoft), which applies to the `Arial.ttf` file the user is
+    instructed to download for the Hades pipeline;
+
+  - the **upstream copyright** of attack repositories that have **no
+    explicit license attached** (e.g., the Visual Adversarial Examples
+    and Jailbreaking-Attack-against-MLLM repositories). Absence of a
+    license does NOT grant any rights — default copyright applies.
+
+This list is illustrative, not exhaustive. See THIRD_PARTY.md for a
+runtime-oriented inventory of the third-party components referenced by
+this project, together with pointers to their upstream sources.
+
+Users and redistributors are solely responsible for reviewing and
+complying with the upstream license terms of every third-party
+component they use, download, fine-tune, redistribute, or otherwise
+rely on through this repository. Nothing in this repository should be
+interpreted as granting any rights in third-party materials beyond what
+their respective original licenses allow.

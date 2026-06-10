@@ -9,6 +9,27 @@ Jailbreak attacks are categorized into two types:
 
 Each category includes recent state-of-the-art jailbreak implementations, enabling reproducible and extensible evaluations under a unified experimental setting.
 
+> **License notice (please read before use).** The MIT License in
+> [LICENSE](LICENSE) covers **only** the source code and documentation
+> directly developed by ai.resilience as part of this project. When the
+> simulator runs, it also vendors copies of third-party attack code,
+> downloads third-party model weights, reads third-party datasets,
+> renders text with a third-party font, and calls closed-source LLM
+> APIs. Those components are **NOT** covered by the MIT License — they
+> remain governed by their **original upstream terms**, which include
+> the **Llama 2 Community License** (HarmBench classifier, LLaVA v1.5),
+> the **LLaMA Research License / Vicuna non-commercial terms** (used
+> via MiniGPT-4), the **Tongyi Qianwen License** (vendored Qwen-VL
+> code), **Apache-2.0 / BSD-3-Clause / MIT** (most other vendored
+> attack and model code), the **OpenAI Terms of Use** (Hades / JOOD
+> API calls), the proprietary copyright of the **Arial** typeface
+> (Hades font asset), and the upstream copyrights of a few attack
+> repositories that carry **no explicit license at all** (notably
+> Visual Adversarial Examples and Jailbreaking-Attack-against-MLLM).
+> Users and redistributors are responsible for reviewing and complying
+> with each upstream license. See [THIRD_PARTY.md](THIRD_PARTY.md) for
+> a runtime-oriented inventory.
+
 
 ## Multi-model jailbreak attack
 |                                                    **Method**                                                   |       **Source**      | **Key Properties**                                         | 
@@ -31,6 +52,13 @@ pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 curl -L -o Arial.ttf "https://github.com/JotJunior/PHP-Boleto-ZF2/raw/master/public/assets/fonts/arial.ttf"  (requirement for Hades)
 ```
+
+> ⚠️ **Note on `Arial.ttf`.** Arial is a proprietary typeface (Monotype /
+> Microsoft) and is **not** distributed as part of this repository. The
+> download command above fetches the font from a third-party mirror for
+> convenience only. Confirm that you have the right to use the Arial font
+> in your environment, or substitute a font you are licensed to use,
+> before running the HADES attack pipeline.
 
 
 ### Step 1 - Generate Test Cases
@@ -57,7 +85,9 @@ python evaluate_completions.py --method_name FigStep --cls_path cais/HarmBench-L
 ```
 
 ## Acknowledgement and citation
-We thank the following open-source reposities.
+We thank the following open-source reposities. Each remains the property of
+its upstream authors and is governed by its own license (see
+[THIRD_PARTY.md](THIRD_PARTY.md) for license details).
 
     [1]  https://github.com/thuccslab/figstep
     [2]  https://github.com/Unispac/Visual-Adversarial-Examples-Jailbreak-Large-Language-Models
@@ -68,4 +98,48 @@ We thank the following open-source reposities.
     [7]  https://github.com/isXinLiu/MM-SafetyBench
     [8]  https://github.com/centerforaisafety/HarmBench
 
+
+## License
+
+This project is released under a **dual-scope** licensing arrangement:
+
+- The original source code and documentation directly developed by
+  ai.resilience as part of the VLM-Jailbreak-Simulator project are
+  released under the **MIT License** (see [LICENSE](LICENSE)).
+- All third-party source code (vendored or imported), pre-trained model
+  weights, datasets, closed-source APIs, and assets that the simulator
+  exercises at runtime are **NOT** covered by the MIT License. They
+  remain subject to their **original upstream licenses**, notices, and
+  use restrictions, including (without limitation):
+
+  - the **Llama 2 Community License** — governs the
+    `cais/HarmBench-Llama-2-13b-cls` classifier used by
+    `evaluate_completions.py` and the `llava-hf/llava-1.5-7b-hf`
+    weights used as a target VLM;
+  - the **LLaMA Research License** and **Vicuna delta-weights terms**
+    (*non-commercial*) — flow into the MiniGPT-4 target pipeline via
+    Vicuna v0 weights;
+  - the **Tongyi Qianwen License Agreement** — governs the vendored
+    Qwen-VL wrapper code under `multimodalmodels/qwen/`;
+  - **Apache-2.0** / **BSD-3-Clause** terms — govern vendored
+    MiniGPT-4, LLaVA, InstructBLIP / LAVIS, JOOD, HarmBench
+    components, and most Python dependencies;
+  - **MIT** — governs the FigStep, HADES, BoN, and HarmBench upstream
+    repositories that the simulator vendors or imports from;
+  - the **OpenAI Terms of Use** — govern the `gpt-3.5-turbo` and
+    `gpt-4-turbo-2024-04-09` API calls made by the Hades and JOOD
+    pipelines;
+  - the original copyright of the **Arial** typeface (Monotype /
+    Microsoft) — applies to the `Arial.ttf` font asset required by
+    Hades;
+  - **No explicit license** — applies to the Visual Adversarial
+    Examples and Jailbreaking-Attack-against-MLLM upstream
+    repositories. Absence of a license does **not** grant any rights;
+    default copyright applies.
+
+Users and redistributors are solely responsible for reviewing and
+complying with the upstream license of every third-party component they
+download, use, fine-tune, or redistribute through this repository. See
+[THIRD_PARTY.md](THIRD_PARTY.md) for a runtime-oriented inventory of
+the third-party components actually exercised by this project.
 
