@@ -25,8 +25,12 @@ class HarmBenchMultiModalModel(MultiModalModel):
 
     def get_model_and_tokenizer(self, model_name):
         if model_name == "cais/HarmBench-Llama-2-13b-cls":
-            self.model = AutoModelForCausalLM.from_pretrained("cais/HarmBench-Llama-2-13b-cls", torch_dtype=torch.bfloat16, device_map="auto")
-            self.tokenizer = AutoTokenizer.from_pretrained("cais/HarmBench-Llama-2-13b-cls", use_fast=False, truncation_side="left", padding_side="left")
+            from .loaders import load_causal_lm_classifier
+            self.model, self.tokenizer = load_causal_lm_classifier(
+                model_name, load_in_8bit=False, torch_dtype="bfloat16",
+                tokenizer_kwargs={"use_fast": False, "truncation_side": "left",
+                                  "padding_side": "left"},
+            )
         else:
             raise ValueError(f"Model {model_name} not supported")
 

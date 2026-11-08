@@ -1,7 +1,7 @@
 torch
 torchvision
 torchaudio
-transformers==4.54.1
+transformers==4.57.1
 accelerate
 spacy
 datasketch
@@ -18,7 +18,7 @@ wandb
 matplotlib
 scikit-image
 visual_genome
-git+https://github.com/openai/CLIP.git
+clip @ git+https://github.com/openai/CLIP.git@a1d071733d7111c9c014f024669f959182114e33
 pandas
 diffusers
 openai
@@ -27,3 +27,13 @@ Pillow
 PyYAML  
 beautifulsoup4
 anthropic
+
+# Shared model loaders and VLM targets
+qwen-vl-utils==0.0.14
+sentence-transformers==5.1.2
+bitsandbytes==0.50.2
+einops==0.8.1
+nltk==3.8.1
+seaborn==0.13.2
+tiktoken
+transformers-stream-generator==0.0.5

@@ -11,11 +11,21 @@ from PIL import Image
 import tqdm
 
 
+from ..loaders import load_llava, load_native_vlm
+from ..registry import (LLAVA_15_HF_ID, LLAVA_15_REVISION, LLAVA_16_HF_ID,
+                        LLAVA_16_REVISION)  # noqa: F401  (re-exported)
+
+
 class LLaVA_v1_5(MultiModalModel):
-    def __init__(self):
-        self.model = LlavaForConditionalGeneration.from_pretrained("llava-hf/llava-1.5-7b-hf", device_map="auto")#.to(self.device)
+    def __init__(self, revision=LLAVA_15_REVISION):
+        # loaded through multimodalmodels.loaders (pinned id/revision in registry.py)
+        self.model, self.processor = load_llava(
+            LLAVA_15_HF_ID, revision=revision, torch_dtype="float16", device_map="auto",
+            processor_kwargs={"num_additional_image_tokens": 1},
+        )
+        self.model.gradient_checkpointing_enable()   # 이 줄 추가
+        self.model.config.use_cache = False           # gradient checkpointing 쓸 땐 이것도 같이 꺼줘야 함 (충돌 방지)
         self.device = self.model.device #torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
-        self.processor = AutoProcessor.from_pretrained("llava-hf/llava-1.5-7b-hf", num_additional_image_tokens=1)#, device_map="balanced")
         self.normalize = transforms.Normalize(mean=self.processor.image_processor.image_mean, std=self.processor.image_processor.image_std)
         self.preprocess = lambda x: self.processor.image_processor.preprocess(x, do_normalize=False, return_tensors='pt')['pixel_values'][0]
         self.tokenizer_kwargs = {"padding": False, "truncation": None, "max_length": None}
@@ -25,21 +35,21 @@ class LLaVA_v1_5(MultiModalModel):
     def generate(self, test_cases, image_dir, **generation_kwargs):
         generation_kwargs.setdefault('do_sample', False)
         generation_kwargs.setdefault('num_beams', 1)
-        assert generation_kwargs['do_sample'] is False, "do_sample should be False"
+        generation_kwargs.setdefault('use_cache', True)
         assert generation_kwargs['num_beams'] == 1, "num_beams should be 1"
         outputs = []
-        if generation_kwargs['progress_bar']:
+        if generation_kwargs.pop('progress_bar', False):
             test_cases = tqdm.tqdm(test_cases)
-        try:
-            generation_kwargs.pop('progress_bar')    
-        except:
-            pass
         
         for case in test_cases:
             image, prompt = case
+            raw_image = None
             if isinstance(image, str):
                 raw_image = Image.open(os.path.join(image_dir, image))
-            conv_prompt = f"A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions. USER: <image>\n{prompt} ASSISTANT:"
+            if raw_image is None:
+                conv_prompt = f"A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions. USER: {prompt} ASSISTANT:"
+            else:
+                conv_prompt = f"A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions. USER: <image>\n{prompt} ASSISTANT:"
 
             inputs = self.processor(images=raw_image, text=conv_prompt, return_tensors="pt").to(self.device)#['input_ids'][0]
 
@@ -96,7 +106,7 @@ class LLaVA_v1_5(MultiModalModel):
         loss_fn = CrossEntropyLoss()
         return loss_fn(shift_logits, target_ids.view(-1))
 
-    def compute_loss_batch(self, x_adv, batch_targets, image_pil):
+    def compute_loss_batch(self, x_adv, batch_targets, image_pil, prompts=None):
         batch_size = len(batch_targets)
         input_ids = []
         labels = []
@@ -104,17 +114,20 @@ class LLaVA_v1_5(MultiModalModel):
 
         #self.processor.num_additional_tokens = 0
         #self.processor.num_additional_image_tokens = 1
+        prompts = prompts if prompts is not None else [""] * batch_size
+        if len(prompts) != batch_size:
+            raise ValueError("prompts and batch_targets must have the same length")
         if type(image_pil) == list:
-            batch_targets_zip = zip(batch_targets, image_pil)
+            batch_targets_zip = zip(batch_targets, image_pil, prompts)
         else:
-            batch_targets_zip = zip(batch_targets, [image_pil] * batch_size)
+            batch_targets_zip = zip(batch_targets, [image_pil] * batch_size, prompts)
 
         template =  "A chat between a curious user and an artificial intelligence assistant. \
         The assistant gives helpful, detailed, and polite answers to the user's questions. \
-        USER: <image>\n ASSISTANT: {target}</s>"
+        USER: <image>\n{prompt} ASSISTANT: {target}</s>"
         
-        for target, image_pil_ in batch_targets_zip:
-            text = template.format(target=target)
+        for target, image_pil_, prompt in batch_targets_zip:
+            text = template.format(prompt=prompt, target=target)
             input_id = self.processor(images=image_pil_, text=text, return_tensors="pt")['input_ids'][0]
             # input_id = self.processor.tokenizer(text, return_tensors="pt")['input_ids'][0]
             label = input_id.clone()
@@ -160,33 +173,60 @@ class LLaVA_v1_5(MultiModalModel):
 
 
 class LLaVA_v1_6(MultiModalModel):
-    def __init__(self):
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = LlavaNextForConditionalGeneration.from_pretrained('llava-v1.6-vicuna-7b-hf').to(self.device)
-        self.processor = LlavaNextProcessor.from_pretrained('llava-v1.6-vicuna-7b-hf')
+    """Legacy wrapper retained for ``generate_completions.py`` compatibility.
+
+    The unified pipeline uses :class:`core.targets.native_hf.LlavaNextTarget`.
+    Both paths now share the same pinned Apache-2.0 Mistral checkpoint and
+    centralized loader.
+    """
+
+    def __init__(self, revision=LLAVA_16_REVISION):
+        self.model, self.processor = load_native_vlm(
+            LLAVA_16_HF_ID,
+            revision=revision,
+            torch_dtype="auto",
+            device_map="auto",
+            eval_mode=True,
+        )
+        self.device = self.model.device
 
     def generate(self, test_cases, image_dir, **generation_kwargs):
         generation_kwargs.setdefault('do_sample', False)
         generation_kwargs.setdefault('num_beams', 1)
-        assert generation_kwargs['do_sample'] is False, "do_sample should be False"
         assert generation_kwargs['num_beams'] == 1, "num_beams should be 1"
+        generation_kwargs.pop("num_beams")
+        generation_kwargs.pop("progress_bar", None)
         outputs = []
         for case in test_cases:
             image, prompt = case
+            raw_image = None
             if isinstance(image, str):
-                raw_image = Image.open(os.path.join(image_dir, image))
-                output = self.query(raw_image, prompt)
-                outputs.append(output)
+                with Image.open(os.path.join(image_dir, image)) as opened:
+                    raw_image = opened.convert("RGB").copy()
+            output = self.query(raw_image, prompt, **generation_kwargs)
+            outputs.append(output)
 
         return outputs 
 
-    def query(self, image, prompt):
-        text = f"A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions. USER: <image>\n{prompt} ASSISTANT:"
-        inputs = self.processor(text=text, images = image, return_tensors="pt").to(self.device)
-        output = self.model.generate(**inputs, max_new_tokens=512)
-        answer = self.processor.decode(output[0], skip_special_tokens=True)
-        answer = answer.split('ASSISTANT:')[-1].strip()
-        return answer
+    def query(self, image, prompt, **generation_kwargs):
+        content = []
+        if image is not None:
+            content.append({"type": "image", "image": image})
+        content.append({"type": "text", "text": prompt})
+        inputs = self.processor.apply_chat_template(
+            [{"role": "user", "content": content}],
+            tokenize=True,
+            add_generation_prompt=True,
+            return_dict=True,
+            return_tensors="pt",
+        ).to(self.device)
+        generation_kwargs.setdefault("max_new_tokens", 512)
+        output = self.model.generate(**inputs, **generation_kwargs)
+        generated = output[:, inputs["input_ids"].shape[1]:]
+        return self.processor.batch_decode(
+            generated, skip_special_tokens=True,
+            clean_up_tokenization_spaces=False,
+        )[0].strip()
 
     
     def compute_loss(self, behavior, target, image_input):
