@@ -11,6 +11,7 @@ DEFENSE_REGISTRY = {
     'CIDER': ('defenses.cider', 'CIDERDefense'),
     'AdaShield': ('defenses.adashield', 'AdaShieldDefense'),
     'AsD': ('defenses.asd', 'AsDDefense'),
+    'VLMShield': ('defenses.vlmshield', 'VLMShieldDefense'),
 }
 
 

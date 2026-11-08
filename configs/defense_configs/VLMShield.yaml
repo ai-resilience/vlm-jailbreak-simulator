@@ -1,0 +1,12 @@
+# Official detector profile from pgqihere/VLMShield at
+# 344ca14778383aef57315229118f7669454fb4bb (VLMShield_script/VLMShield.py).
+experiment_profile: official
+clip_model: openai/clip-vit-large-patch14
+# Pinned Hugging Face snapshot (registry default when omitted).
+clip_revision: 32bd64288804d66eefd0ccbe215aa642df71cc41
+classifier_path: data/method_assets/VLMShield/checkpoints/vlmshield_classifier.pt
+expected_classifier_sha256: "b36702877791f347f0b846d93b9b9162c86a8895efe962b6052d322ed0c53c34"
+# Upstream only reports detection rates; this fixed refusal is the simulator's
+# response for a blocked pair (same sentence as the JailGuard adapter).
+refusal_response: "I'm sorry, but I cannot assist with that request."
+store_embedding: false
