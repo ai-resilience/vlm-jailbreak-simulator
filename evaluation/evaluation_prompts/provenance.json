@@ -1,0 +1,12 @@
+{
+  "repository": "https://github.com/dsbowen/strong_reject",
+  "revision": "7a551d5b440ec7b75d4f6f5bb7c1719965b76b47",
+  "source_path": "strong_reject/eval_files/judge_templates.json",
+  "source_sha256": "6d01841899e99f1f57c4f19153056051684ede2a7e1b54ebbb37b5ddff981768",
+  "license": "MIT",
+  "license_sha256": "bf21192441d08cf7a24eb55746a0f4d557a1ae3736b475bf3b7e5e8f04a56262",
+  "prompt_sha256": {
+    "strongreject_rubric": "0a282b857e1e53ff6ec92c91eb960d2444806e2e4518f4a40232549b599963d0",
+    "strongreject_rubric_system": "7919b6d41af2dc9f32797d96eaa952934dca0713c7f3f63ddc6c299db9857248"
+  }
+}
