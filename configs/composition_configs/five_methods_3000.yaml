@@ -1,0 +1,158 @@
+# Cover every source record once, then add 70 draws; one recipe per input.
+mode: five_methods
+name: five_methods_3000
+seed: 20261104
+preview_per_recipe: 3
+algorithm_fidelity: adapted_composition
+paper_reproduction: false
+render:
+  font_path: data/method_assets/fonts/NotoSansCJKsc-Bold.otf
+  width: 768
+  height: 768
+  max_height: 1536
+  font_size: 48
+  min_font_size: 28
+  margin: 32
+cs_dj:
+  precomputed_dir: data/method_assets/compositions/cs_dj
+  config: configs/method_configs/CS-DJ.yaml
+  seed: 2025
+  embedding_batch_size: 64
+  show_embedding_progress: true
+jood:
+  operation: mixup
+  harmless_dir: data/method_assets/JOOD/images/harmless
+  source_weights:
+  - 0.05
+  - 0.1
+  - 0.15
+  - 0.2
+  - 0.25
+  - 0.3
+  - 0.35
+  - 0.4
+  - 0.45
+  - 0.5
+  - 0.55
+  - 0.6
+  - 0.65
+  - 0.7
+  - 0.75
+  - 0.8
+  - 0.85
+  - 0.9
+  - 0.95
+jps:
+  source_run: data/method_assets/compositions/jps
+  image: artifacts/advbench_subset/qwen2vl_7b/full_con32|255_lr1|255_revision5_iteration5_.png
+  steer: artifacts/advbench_subset/qwen2vl_7b/full_con32|255_lr1|255_revision5_iteration5_.txt
+  training_csv: inputs/advbench_subset.csv
+recipes:
+- id: P01
+  methods:
+  - FigStep
+  - JOOD
+  count: 160
+- id: P02
+  methods:
+  - FigStep
+  - CS-DJ
+  count: 160
+- id: P03
+  methods:
+  - FigStep
+  - JPS
+  count: 160
+- id: P04
+  methods:
+  - MML
+  - JOOD
+  count: 160
+- id: P05
+  methods:
+  - MML
+  - CS-DJ
+  count: 160
+- id: P06
+  methods:
+  - MML
+  - JPS
+  count: 160
+- id: P07
+  methods:
+  - JOOD
+  - CS-DJ
+  count: 160
+- id: P08
+  methods:
+  - JOOD
+  - JPS
+  count: 160
+- id: P09
+  methods:
+  - CS-DJ
+  - JPS
+  count: 160
+- id: T01
+  methods:
+  - FigStep
+  - JOOD
+  - CS-DJ
+  count: 180
+- id: T02
+  methods:
+  - FigStep
+  - JOOD
+  - JPS
+  count: 180
+- id: T03
+  methods:
+  - FigStep
+  - CS-DJ
+  - JPS
+  count: 180
+- id: T04
+  methods:
+  - MML
+  - JOOD
+  - CS-DJ
+  count: 180
+- id: T05
+  methods:
+  - MML
+  - JOOD
+  - JPS
+  count: 180
+- id: T06
+  methods:
+  - MML
+  - CS-DJ
+  - JPS
+  count: 180
+- id: T07
+  methods:
+  - JOOD
+  - CS-DJ
+  - JPS
+  count: 180
+- id: Q01
+  methods:
+  - FigStep
+  - CS-DJ
+  - JOOD
+  - JPS
+  count: 150
+- id: Q02
+  methods:
+  - MML
+  - CS-DJ
+  - JOOD
+  - JPS
+  count: 150
+sources:
+  datasets:
+  - SafeBench
+  - HADES
+  - MM-SafetyBench
+  balance: proportional
+  sampling: all_records_once

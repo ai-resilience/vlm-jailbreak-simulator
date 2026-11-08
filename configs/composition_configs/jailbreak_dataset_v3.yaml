@@ -1,0 +1,202 @@
+schema_version: 1
+name: jailbreak_dataset_v3
+seed: 20261018
+candidate_multiplier: 1.2
+checkpoint_every: 10
+selection_policy: structural_qc_then_deterministic_order_no_asr
+algorithm_fidelity: adapted_composition
+paper_reproduction: false
+split:
+  group_key: source_behavior_id
+  train: 0.7
+  validation: 0.1
+  test: 0.2
+expected_totals:
+  final: 1500
+  raw: 1800
+controls:
+  included_in_jailbreak_set: false
+  total: 600
+  benign_fpr_external: 300
+  unmodified_harmful: 150
+  single_or_leave_one_out: 150
+execution_groups:
+- name: 01_ready
+  recipes:
+  - P01
+  - P02
+  - P03
+- name: 03_ultrabreak_layout
+  recipes:
+  - P04
+- name: 04_csdj_full
+  recipes:
+  - P09
+- name: 06_jip
+  recipes:
+  - P06
+- name: 07_jip_hades
+  recipes:
+  - T03
+- name: 08_jps
+  recipes:
+  - T06
+recipes:
+- id: P01
+  name: CS-DJ-Split -> FigStep
+  arity: 2
+  datasets:
+  - SafeBench
+  - AdvBench
+  final_count: 200
+  raw_count: 240
+  stages:
+  - &id001
+    component: cs_dj_split
+    attack: CS-DJ
+    config: configs/method_configs/CS-DJ.yaml
+  - &id002
+    component: figstep_render
+    attack: FigStep
+    config: configs/composition_configs/components/FigStep.yaml
+- id: P02
+  name: CS-DJ-Split -> MML
+  arity: 2
+  datasets:
+  - SafeBench
+  - AdvBench
+  final_count: 200
+  raw_count: 240
+  stages:
+  - *id001
+  - &id003
+    component: mml_layout
+    attack: MML
+    config: configs/method_configs/MML_generated.yaml
+    overrides:
+      input_mode: generated
+      prompt_source: clean_room
+      variant: word_replacement
+      attempts: 1
+      seed: 0
+- id: P03
+  name: FigStep -> JOOD
+  arity: 2
+  datasets:
+  - SafeBench
+  final_count: 200
+  raw_count: 240
+  stages:
+  - *id002
+  - component: jood_aug
+    attack: JOOD
+    config: configs/method_configs/JOOD.yaml
+    overrides:
+      aug: randaug1
+      lams:
+      - 0.1
+      - 0.2
+      - 0.3
+      - 0.4
+      - 0.5
+      - 0.6
+      - 0.7
+      - 0.8
+      - 0.9
+      seed: 0
+- id: P04
+  name: MML -> UltraBreak-Patch
+  arity: 2
+  datasets:
+  - SafeBench
+  final_count: 200
+  raw_count: 240
+  stages:
+  - *id003
+  - &id004
+    component: ultrabreak_patch
+    attack: UltraBreak
+    config: configs/attacks/UltraBreak_official.yaml
+    placement: right_strip
+    patch_fraction: 0.35
+- id: P06
+  name: JIP -> UltraBreak-Patch
+  arity: 2
+  datasets:
+  - AdvBenchM
+  - HADES
+  final_count: 200
+  raw_count: 240
+  stages:
+  - &id005
+    component: jailbreak_in_pieces_embedding
+    attack: JailbreakInPieces
+    config: configs/attacks/JailbreakInPieces.yaml
+    overrides:
+      target_mode: behavior
+      target_image: null
+      base_image: data/method_assets/UltraBreak/images/white.jpeg
+      prompt_indices:
+      - 0
+  - *id004
+- id: P09
+  name: CS-DJ-Full -> UltraBreak-Patch
+  arity: 2
+  datasets:
+  - SafeBench
+  - AdvBench
+  final_count: 200
+  raw_count: 240
+  stages:
+  - component: cs_dj_full
+    attack: CS-DJ
+    config: configs/method_configs/CS-DJ.yaml
+    overrides:
+      image_dir: data/benchmarks/HADES/images/Financial
+      num_images: 900
+      font_path: /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+      strict_font: true
+  - component: ultrabreak_patch
+    attack: UltraBreak
+    config: configs/attacks/UltraBreak_official.yaml
+    placement: cs_dj_contrast
+    tile_index: 8
+    patch_fraction: 0.5
+- id: T03
+  name: JIP -> HADES(top) -> UltraBreak(bottom-right)
+  arity: 3
+  datasets:
+  - AdvBenchM
+  - HADES
+  final_count: 150
+  raw_count: 180
+  stages:
+  - *id005
+  - &id006
+    component: hades_patch
+    attack: HADES
+    config: configs/attacks/HADES.yaml
+  - &id007
+    component: ultrabreak_patch
+    attack: UltraBreak
+    config: configs/attacks/UltraBreak_official.yaml
+    placement: bottom_right
+    patch_fraction: 0.35
+    preserve_top_fraction: 0.25
+- id: T06
+  name: JPS -> HADES(top) -> UltraBreak(bottom-right)
+  arity: 3
+  datasets:
+  - AdvBench
+  final_count: 150
+  raw_count: 180
+  stages:
+  - component: jps_joint
+    attack: JPS
+    config: configs/method_configs/JPS.yaml
+    overrides:
+      train_csv: null
+      base_image: data/method_assets/UltraBreak/images/white.jpeg
+  - *id006
+  - *id007
+mode: stages

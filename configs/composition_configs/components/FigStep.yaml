@@ -1,0 +1,9 @@
+# FigStep official profile (CryptoAILab/FigStep 0861b17): exact src/generate_prompts.py.
+# Requires the upstream FreeMonoBold.ttf for pixel-faithful rendering.
+experiment_profile: official
+font_path: FreeMonoBold.ttf
+strict_font: false   # set true to fail (not fall back) when the font is absent
+font_size: 80
+wrap_width: 15
+steps: 3
+canvas: 760
