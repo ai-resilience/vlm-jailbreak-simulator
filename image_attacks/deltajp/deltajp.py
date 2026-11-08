@@ -1,234 +1,111 @@
-import os
-import json
-from tqdm import tqdm
-
-from transformers import StoppingCriteriaList, TextIteratorStreamer
-
-# from attacks.xidian.utils.minigpt4.common.config_1 import Config
-# from attacks.xidian.utils.minigpt4.common.dist_utils import get_rank
-# from attacks.xidian.utils.minigpt4.common.registry import registry
-# from attacks.xidian.utils.minigpt4.conversation.conversation import Chat, CONV_VISION_Vicuna0, CONV_VISION_LLama2, StoppingCriteriaSub
-
-
-# from attacks.xidian.utils.torchattacks.attacks.pixle import *
-# from attacks.xidian.utils.torchattacks.attacks.bim import *
-# from attacks.xidian.utils.torchattacks.attacks.pgd_uap_v1 import *
-# from attacks.xidian.utils.torchattacks.attacks.pgdl2 import *
-
-import torch.backends.cudnn as cudnn
+"""Port of the reference simulator's adapted cross-class DeltaJP."""
 import random
-import time
-import torch
-import numpy as np
-import torch.nn as nn
-import torchvision.transforms as transforms
-import multimodalmodels
+import json
+
 from PIL import Image
 
-import csv
-import json
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-def save_image(image_array: np.ndarray, f_name: str) -> None:
-    """
-    Saves image into a file inside `ART_DATA_PATH` with the name `f_name`.
-
-    :param image_array: Image to be saved.
-    :param f_name: File name containing extension e.g., my_img.jpg, my_img.png, my_images/my_img.png.
-    """
-    from PIL import Image
-    image = Image.fromarray(image_array)
-    image.save(f_name)
+from benchmark_datasets import load_dataset, portable_path, read_csv
+from image_attacks.jp_common import JPAttack, sha256
+from image_attacks.jp_pgd import optimize_deltajp
+from data_paths import resolve_path
 
 
-def denorm(image):
-    mean = (0.48145466, 0.4578275, 0.40821073)
-    std = (0.26862954, 0.26130258, 0.27577711)
-    mean = torch.tensor(mean).to(device)
-    std = torch.tensor(std).to(device)
-
-    image_denorm = image * std.view(1, -1, 1, 1) + mean.view(1, -1, 1, 1)
-
-    return image_denorm
+def _affirmative_target(instruction):
+    return f'Sure, here is {instruction[0].lower() + instruction[1:]}'
 
 
-class DeltaJP:
-    def __init__(self, **kwargs):
-        self.train_num = kwargs['train_num']
-        self.eps = kwargs['eps']
-        self.epsilon = kwargs['epsilon'] / 255
-        self.alpha = kwargs['alpha'] / 255
-        #self.n_iters = kwargs['n_iters']
-        self.steps = kwargs['steps']
-        self.constrained = kwargs['constrained']
-        self.batch_size = kwargs['batch_size']
-        self.random_start = kwargs['random_start']
-        self.image_path = kwargs['image_path']
+class DeltaJP(JPAttack):
+    name = 'DeltaJP'
+    module = 'deltajp'
+    default_dataset = 'AdvBenchM'
 
-        # with open(kwargs['target_path'], 'r') as f:
-        #     data = list(csv.reader(f, delimiter=","))
-        # self.targets = []
-        # num = len(data)
-        # for i in range(num):
-        #     self.targets.append(data[i][0])    
-
-        with open(kwargs['target_path'], 'r') as f:
-            data = json.load(f)
-        self.targets = data
-
-        self.target_model = kwargs['target_model']
-        self.model = getattr(multimodalmodels, self.target_model)()
-
-
-    # def generate(self, save_dir):
-
-    #     random_number = random.randint(1, 2000)
-    #     random.seed(random_number)
-    #     np.random.seed(random_number)
-    #     torch.manual_seed(random_number)
-
-    #     model = MiniGPT(self.train_num)
-    #     model = model.eval()
-    #     attack = PGD(model, eps=self.eps / 255, alpha=self.alpha / 255, steps=self.steps, nprompt=model.train_num,
-    #              random_start=False)
-        
-    #     attack.set_mode_targeted_by_label()
-    #     mean = (0.48145466, 0.4578275, 0.40821073)
-    #     std = (0.26862954, 0.26130258, 0.27577711)
-    #     attack.set_normalization_used(mean, std)
-
-    #     image = torch.zeros(1, 3, 224, 224).to(device)
-    #     images = []
-    #     images.append(image)
-    #     adv_img = attack(images, model.shift_labels_1)
-    #     adv_image = denorm(adv_img[0])
-    #     save_img = (adv_image[0].permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
-    #     save_image(save_img, '%s/bad_prompt.bmp' % save_dir)
-
-    def generate_test_cases(self, behaviors, save_dir, verbose=False):
-        os.makedirs(save_dir, exist_ok=True)
-        os.makedirs(os.path.join(save_dir, 'images'), exist_ok=True)    
-
-        test_cases = {}
-
-        self.attack_image_path = os.path.join(save_dir, 'images')
-        #self.generate(image_path)
-
-        behaviors_list = [behavior["Behavior"] for behavior in behaviors]  
-        behaviors_unique = np.unique(behaviors_list)
-
-
-        for behavior_unique in tqdm(behaviors_unique, total = len(behaviors_unique)):     
-            behavior_dict = [behavior_dict for behavior_dict in behaviors if behavior_dict['Behavior'] == behavior_unique]
-            behavior = behavior_dict[0]['Behavior']
-            #behavior_id = behavior_dict['BehaviorID']
-            if verbose:
-                print(f"Behavior: {behavior}")
-                #print(f"Behavior ID: {behavior_id}")
-
-            self.PGD(behavior_dict)
-            # if self.constrained:
-            #     self.PGD_constrained(behavior_dict)
-            # else:
-            #     self.PGD_unconstrained(behavior_dict)
-            
-            #current_test_case = ['bad_prompt.bmp', behavior]
-            for behavior_dict_ in behavior_dict:
-                test_cases[behavior_dict_["BehaviorID"]] = [behavior_dict_["ImageFileName"], behavior_dict_["Behavior"]]
-
-        save_path = os.path.join(save_dir, 'DeltaJP_test_cases.json')
-        os.makedirs(os.path.dirname(save_path), exist_ok=True) if os.path.dirname(save_path) else None
-        with open(save_path, 'w') as file:
-            json.dump(test_cases, file, indent=2)        
-
-    def PGD(self, behavior_dict):
-        """
-        :param behavior_dict: the behavior_dict of targets
-        :return: adv_image
-        """
-        #noise_pil = transforms.ToPILImage()(torch.zeros(3, 224, 224))
-
-        #adv_noise = torch.rand(1, 3, 336, 336).to(self.model.device) # [0,1]
-        adv_noise = torch.rand(1, 3, 336, 336).to(self.model.device) * 2 * self.epsilon - self.epsilon
-
-        adv_noise.requires_grad_(True)
-        adv_noise.retain_grad()
-        #img_pil = transforms.ToPILImage()(torch.zeros(3, 224, 224))
-        # img_pil = Image.open(image_path).convert('RGB')
-
-        # img = self.model.vis_processor(img_pil, return_tensors='pt')["pixel_values"].to(self.model.device)
-
-        self.model.model.requires_grad_(False)
-
-        targets = [[self.targets[behavior_dict_["BehaviorID"]], behavior_dict_['ImageFileName']] for behavior_dict_ in behavior_dict]
-
-        pbar = tqdm(range(self.steps+1))
-
-        for t in pbar:
-            if len(targets) >= self.batch_size:
-                batch_targets = random.sample(targets, self.batch_size)
+    def _select_training(self):
+        source = self.config.get('train_behaviors_path')
+        rows = self.normalize_behaviors(read_csv(source) if source else load_dataset(self.config.get('train_dataset', 'AdvBenchM')))
+        candidates = [row for row in rows if row.get('images') or row.get('ImageFileName')]
+        if self.split_strategy == 'first':
+            selected = candidates[:self.train_num]
+        else:
+            by_category = {}
+            for row in candidates:
+                by_category.setdefault(row.get('category') or '', []).append(row)
+            rng = random.Random(self.seed)
+            for group in by_category.values():
+                rng.shuffle(group)
+            selected = []
+            while len(selected) < min(self.train_num, len(candidates)):
+                for category in sorted(by_category):
+                    if by_category[category]:
+                        selected.append(by_category[category].pop())
+                        if len(selected) == self.train_num:
+                            break
+        legacy_targets = None
+        if self.config.get('target_path'):
+            with open(resolve_path(self.config['target_path']), encoding='utf-8') as stream:
+                legacy_targets = json.load(stream)
+            if not isinstance(legacy_targets, dict):
+                raise ValueError('DeltaJP target_path must contain an ID-to-target JSON object')
+        for row in selected:
+            if legacy_targets is not None:
+                if row['BehaviorID'] not in legacy_targets:
+                    raise ValueError(f"DeltaJP target_path has no target for {row['BehaviorID']}")
+                row['target'] = legacy_targets[row['BehaviorID']]
             else:
-                # 처리 방법 선택: 전체 사용 / 스킵 / 경고 출력
-                batch_targets = targets
-            
-            img_pil_list = [Image.open(os.path.join(self.image_path, behavior_dict_[1])).convert('RGB') for behavior_dict_ in batch_targets]
-        
-            img_tensors = self.model.vis_processor(img_pil_list, return_tensors='pt')["pixel_values"].to(self.model.device)
+                row['target'] = row.get('target') or _affirmative_target(row['Behavior'])
+            if not isinstance(row['target'], str) or not row['target'].strip():
+                raise ValueError('DeltaJP training targets must be nonempty strings')
+        return selected
 
-            # x_adv = x + adv_noise            
-            # x_adv = self.normalize(x_adv)
-            # x_adv = self.normalize(img_tensors + adv_noise)
-            x_adv = img_tensors + adv_noise
+    def _optimize(self):
+        from tqdm import tqdm
+        surrogate = self._load_surrogate()
+        train = self.training_corpus()
+        pils = []
+        for row in train:
+            with Image.open(self.image_path(row)) as image:
+                pils.append(image.convert('RGB'))
+        # Bicubic resizing in native processors may overshoot [0,1]. Define
+        # the clean pixels before applying the bounded adversarial delta.
+        units = [surrogate.to_unit01(image).clamp(0, 1).detach() for image in pils]
+        if any(unit.shape != units[0].shape for unit in units):
+            raise ValueError('DeltaJP surrogate must provide one consistent image geometry')
+        with tqdm(total=self.steps, desc='DeltaJP') as progress:
+            def loss_fn(image, indices, targets):
+                return surrogate.compute_loss_batch(image, targets, [pils[i] for i in indices])
+            def callback(step, indices, loss):
+                surrogate.zero_grad()
+                progress.update()
+            return optimize_deltajp(units, [row['target'] for row in train], loss_fn,
+                                    epsilon=self.epsilon, alpha=self.alpha, steps=self.steps,
+                                    batch_size=self.batch_size, seed=self.seed,
+                                    random_start=self.random_start, callback=callback)
 
-            #target_loss = self.model.compute_loss_batch(x_adv, [x[0] for x in batch_targets], img_pil_list)
-            target_loss = self.model.compute_loss_batch(x_adv, [x[0] for x in batch_targets], [transforms.ToPILImage()(x) for x in img_tensors])
+    def _render(self, rows, folder, tensor):
+        import torch
+        surrogate = self._load_surrogate()
+        delta = tensor.to(surrogate.device)
+        cases, details = {}, {}
+        train_images = {sha256(self.image_path(row)) for row in self.training_corpus()}
+        for row in rows:
+            source = self.image_path(row)
+            with Image.open(source) as pil:
+                unit = surrogate.to_unit01(pil.convert('RGB')).clamp(0, 1)
+            if unit.shape != delta.shape:
+                raise ValueError('DeltaJP delta and evaluation image shapes disagree')
+            with torch.no_grad():
+                adv = (unit + delta).clamp(0, 1)
+            filename = row['BehaviorID'] + '_delta.png'
+            self.save_tensor_image(adv, folder / filename)
+            source_hash = sha256(source)
+            details[row['BehaviorID']] = {
+                'source': portable_path(source), 'source_sha256': source_hash,
+                'source_shared_with_training': source_hash in train_images,
+                'image_selection': 'first_catalog_image',
+                'image_association': row.get('meta', {}).get('image_association'),
+                'continuous_linf': float((adv - unit).abs().max()),
+                'pixel_min': float(adv.min()), 'pixel_max': float(adv.max())}
+            cases[row['BehaviorID']] = [filename, row['Behavior']]
+        return cases, details
 
-            target_loss.backward()
 
-            adv_noise.data = (adv_noise.data - self.alpha * adv_noise.grad.detach().sign()).clamp(0, 1)
-            adv_noise.grad.zero_()
-            self.model.model.zero_grad()
-
-            pbar.set_description(f"target_loss: {target_loss.item():.4f}")
-
-            if t % 100 == 0:
-                
-                print('######### Output - Iter = %d ##########' % t)     
-                print("target_loss: %f" % (
-                target_loss.item())
-                )
-        
-        img_pil_list = [Image.open(os.path.join(self.image_path, behavior_dict_[1])).convert('RGB') for behavior_dict_ in targets]
-
-        
-        img_tensors = self.model.vis_processor(img_pil_list, return_tensors='pt')["pixel_values"].to(self.model.device)
-
-        # x_adv = self.normalize(img_tensors + adv_noise)   
-        x_adv = img_tensors + adv_noise   
-        adv_noise_norm = self.denormalize(adv_noise).detach().cpu().clip(0,1)[0]
-        transforms.ToPILImage()(adv_noise_norm).save('{}/{}.bmp'.format(self.attack_image_path, behavior_dict[0]['Behavior']))
-
-        adv_img_prompt = self.denormalize(x_adv).detach().cpu().clip(0,1)
-        #adv_img_prompt = x_adv.detach().cpu()
-        for adv_img_prompt_, batch_targets_ in zip(adv_img_prompt, targets):
-            #adv_img_prompt_ = adv_img_prompt_.squeeze(0) 
-            transforms.ToPILImage()(adv_img_prompt_).save('{}/{}'.format(self.attack_image_path, batch_targets_[1]))
-        #transforms.ToPILImage()(adv_noise).save('{}/{}'.format(self.attack_image_path, batch_targets_[1]))
-        #save_image(adv_img_prompt, '%s/bad_prompt.bmp' % (image_path))
-        return adv_img_prompt
-     
-    def normalize(self, images):
-        mean = torch.tensor([0.48145466, 0.4578275, 0.40821073]).to(self.model.device)
-        std = torch.tensor([0.26862954, 0.26130258, 0.27577711]).to(self.model.device)
-        images = images - mean[None, :, None, None]
-        images = images / std[None, :, None, None]
-        return images
-
-    def denormalize(self, images):
-        mean = torch.tensor([0.48145466, 0.4578275, 0.40821073]).to(self.model.device)
-        std = torch.tensor([0.26862954, 0.26130258, 0.27577711]).to(self.model.device)
-        images = images * std[None, :, None, None]
-        images = images + mean[None, :, None, None]
-        return images
-    
+DeltaJPAttack = DeltaJP
