@@ -1,1 +1,7 @@
+# Our integrated FigStep rendering profile.
 font_size: 40
+steps: 3
+wrap_width: 30
+canvas: 760
+font_path: FreeMonoBold.ttf
+strict_font: false

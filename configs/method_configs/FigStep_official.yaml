@@ -1,0 +1,9 @@
+# Alternate rendering profile from our unified implementation.
+# Exact upstream pixels also depend on the supplied font and input statement.
+experiment_profile: official
+font_path: FreeMonoBold.ttf
+strict_font: false
+font_size: 80
+wrap_width: 15
+steps: 3
+canvas: 760
