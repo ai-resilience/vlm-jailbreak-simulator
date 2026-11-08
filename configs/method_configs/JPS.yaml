@@ -1,0 +1,23 @@
+# Reference joint optimization profile with an explicitly substituted base image.
+surrogate: Qwen/Qwen2-VL-7B-Instruct
+surrogate_revision: eed13092ef92e448dd6875b2a00151bd3f7db0ac
+agent_model: Qwen/Qwen2.5-14B-Instruct
+agent_revision: cf98f3b3bbb457ad9e2bb7baf9a0125b6b88caa8
+agent_backend: huggingface
+base_image: data/original/clean.jpeg
+base_image_provenance: existing_local_image_substitute_upstream_clean_jpeg_not_published
+train_dataset: AdvBench
+train_csv: data/method_assets/JPS/advbench_subset.csv
+attack_data_num: 50
+exclude_train_from_eval: true
+image_size: 448
+epsilon: "32/255"
+alpha: "1/255"
+attack_steps: 300
+batch_size: 4
+min_loss_limit: 0.01
+rounds: 5
+momentum_decay: 0.9
+response_max_new_tokens: 256
+strict_agents: true
+revision_retries: 2

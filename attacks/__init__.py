@@ -6,6 +6,7 @@ _method_mapping = {
     'CS-DJ': ('multi_attacks.cs_dj', 'CSDJAttack'),
     'Hades': 'multi_attacks.hades',
     'JOOD': ('multi_attacks.JOOD', 'JOODAttack'),
+    'JPS': ('multi_attacks.jps', 'JPS'),
     'BestOfN': 'multi_attacks.best_of_n',
     'Visual_Adv': 'image_attacks.visual_adv',
     'ImgJP': 'image_attacks.imgjp',
