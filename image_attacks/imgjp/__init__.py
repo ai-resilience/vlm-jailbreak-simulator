@@ -1,1 +1,3 @@
-from .imgjp import ImgJP
+from .imgjp import ImgJP, ImgJPAttack
+
+__all__ = ['ImgJP', 'ImgJPAttack']

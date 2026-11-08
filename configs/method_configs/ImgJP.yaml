@@ -1,11 +1,11 @@
+# Adapted upstream sequential goal/target optimization on a shared surrogate.
+surrogate: llava_v1_5
+train_csv: data/original/advbench/harmful_behaviors_2.csv
+train_candidate_limit: 483
 train_num: 25
-eps: 16
-alpha: 1
-steps: 10
-constrained: True
-random_start: False
-target_model: LLaVA_v1_5
-target_path: data/derogatory_corpus.csv
 epsilon: 16
 alpha: 1
-batch_size: 8
+steps: 200
+seed: 0
+random_start: false
+exclude_train_from_eval: true
