@@ -17,7 +17,8 @@ def get_method_class(method):
     """
     if method not in _method_mapping:
         raise ValueError(f"Can not find method {method}")
-    module_path = _method_mapping[method]
+    entry = _method_mapping[method]
+    module_path, class_name = entry if isinstance(entry, tuple) else (entry, method)
     print("module_path")
     print(module_path)
     
@@ -26,13 +27,19 @@ def get_method_class(method):
         del sys.modules[module_path]
     
     module = importlib.import_module(module_path)
-    method_class = getattr(module, method)  # Class name assumed to be the same as method name
+    method_class = getattr(module, class_name)
     print("method_class")
     print(method_class)
     return method_class    
 
 def init_method(method_class,method_config):
-
+    from data_paths import resolve_path
+    method_config = dict(method_config)
+    for key in ('image_path', 'image_root', 'target_path', 'harmful_image_dir',
+                'harmless_image_dir', 'prompt_dir', 'font_path'):
+        value = method_config.get(key)
+        if isinstance(value, str) and value.startswith(('data/', './data/')):
+            method_config[key] = resolve_path(value)
     output = method_class(**method_config)
     #output.get_model_and_tokenizer(model_name)
     print("output")
