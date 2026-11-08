@@ -7,6 +7,7 @@ _method_mapping = {
     'Hades': 'multi_attacks.hades',
     'JOOD': ('multi_attacks.JOOD', 'JOODAttack'),
     'JPS': ('multi_attacks.jps', 'JPS'),
+    'MML': ('multi_attacks.mml', 'MML'),
     'BestOfN': 'multi_attacks.best_of_n',
     'Visual_Adv': 'image_attacks.visual_adv',
     'ImgJP': 'image_attacks.imgjp',
