@@ -659,9 +659,10 @@ class BestOfN(Baseattack):
         self.length_weight = float(kwargs.get("length_weight", 0.3))
         self.save_all_candidates = bool(kwargs.get("save_all_candidates", True))
 
-        image_root = kwargs.get("image_root", "data/multimodal_behavior_images")
+        image_root = kwargs.get("image_root", "data/original/HarmBench/images")
         if image_root and str(image_root).lower() != "none":
-            self.image_root = Path(image_root)
+            from data_paths import resolve_path
+            self.image_root = Path(resolve_path(image_root))
         else:
             self.image_root = None
 
