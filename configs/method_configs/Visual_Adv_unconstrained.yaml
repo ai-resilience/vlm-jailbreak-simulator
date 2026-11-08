@@ -1,0 +1,11 @@
+# Released unconstrained VisualAdv PGD profile; the surrogate is substituted.
+surrogate: llava_v1_5
+epsilon: 32
+alpha: 1
+n_iters: 5000
+constrained: false
+batch_size: 8
+image_path: data/original/clean.jpeg
+target_path: data/original/derogatory_corpus.csv
+iteration_convention: released
+seed: 42

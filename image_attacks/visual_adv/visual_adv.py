@@ -1,173 +1,286 @@
-import torch
-from tqdm import tqdm
-import random
-import time
-import numpy as np
+"""VisualAdv PGD port on the existing BehaviorID-keyed CSV/JSON interface.
 
-from torchvision.utils import save_image
+One image is optimized over the independent target corpus and reused for all
+evaluation questions. pgd.py is copied unchanged from our reference simulator.
+Shared surrogates are declared substitutions for the original paper models.
+"""
+from __future__ import annotations
 
-import matplotlib.pyplot as plt
+import copy
 import csv
-from PIL import Image
-import multimodalmodels
+import fcntl
+import hashlib
 import json
-
+import math
 import os
+from pathlib import Path
+import shutil
+import tempfile
+
+from PIL import Image
+from benchmark_datasets import portable_path, validate_behaviors
+from data_paths import REPO_ROOT, resolve_path
+from multimodalmodels.registry import resolve_model_id
+from multimodalmodels.surrogates import (
+    SURROGATE_SPECS, default_surrogate_for_backend, load_surrogate,
+)
+
+
+def _sha256(path):
+    digest = hashlib.sha256()
+    with Path(path).open('rb') as source:
+        for block in iter(lambda: source.read(1024 * 1024), b''):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _write_json(path, value):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile('w', encoding='utf-8', dir=path.parent,
+                                         prefix='.' + path.name + '.', delete=False) as stream:
+            temporary = Path(stream.name)
+            json.dump(value, stream, indent=2, ensure_ascii=False, allow_nan=False)
+            stream.write('\n')
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
 
 class Visual_Adv:
-    def __init__(self, **kwargs):
-        print("=== IMAGE_ATTACKS UAP VISUAL_ADV INITIALIZED ===")
-        self.epsilon = kwargs['epsilon'] / 255
-        self.alpha = kwargs['alpha'] / 255
-        self.n_iters = kwargs['n_iters']
-        self.constrained = kwargs['constrained']
-        self.batch_size = kwargs['batch_size']
-        self.image_path = kwargs['image_path']
+    """Legacy CLI name with reference PGD and shared CE surrogate support."""
 
-        with open(kwargs['target_path'], 'r') as f:
-            data = list(csv.reader(f, delimiter=","))
-        self.targets = []
-        num = len(data)
-        for i in range(num):
-            self.targets.append(data[i][0])      
+    official_repo = 'https://github.com/Unispac/Visual-Adversarial-Examples-Jailbreak-Large-Language-Models'
+    official_commit = '5fc9883cfa9b4183cf05c6eceef49e449e45e9c9'
+    algorithm_fidelity = 'faithful_port'
+    substitutes_model = True
 
-        self.target_model = kwargs['target_model']
-        self.model = getattr(multimodalmodels, self.target_model)()
+    def __init__(self, config=None, **kwargs):
+        c = {**(config or {}), **kwargs}
+        self.config = copy.deepcopy(c)
+        requested = c.get('surrogate') or c.get('target_model')
+        if requested is None:
+            requested = default_surrogate_for_backend(c.get('surrogate_backend', 'llava')).model_id
+        model_id = resolve_model_id(requested)
+        profiles = [name for name, spec in SURROGATE_SPECS.items() if spec.model_id == model_id]
+        if not profiles:
+            raise ValueError(f'Unsupported VisualAdv surrogate {requested!r}; choose {sorted(SURROGATE_SPECS)}')
+        self.surrogate_profile = profiles[0]
+        spec = SURROGATE_SPECS[self.surrogate_profile]
+        if c.get('surrogate_backend'):
+            expected = default_surrogate_for_backend(c['surrogate_backend']).backend
+            if expected != spec.backend:
+                raise ValueError('VisualAdv surrogate and surrogate_backend disagree')
+        if c.get('target_model') and resolve_model_id(c['target_model']) != model_id:
+            raise ValueError('Legacy target_model and surrogate disagree')
+        self.surrogate = model_id
+        self.surrogate_backend = spec.backend
+        self.surrogate_revision = c.get('surrogate_revision') or spec.revision
+        self.image_path = resolve_path(c.get('image_path', 'data/original/clean.jpeg'))
+        self.target_path = resolve_path(c.get('target_path', 'data/method_assets/VisualAdv/derogatory_corpus.csv'))
+        self.epsilon = float(c.get('epsilon', 16)) / 255.0
+        self.alpha = float(c.get('alpha', 1)) / 255.0
+        self.n_iters = c.get('n_iters', 5000)
+        self.batch_size = c.get('batch_size', 8)
+        self.constrained = c.get('constrained', True)
+        self.seed = c.get('seed')
+        self.iteration_convention = c.get('iteration_convention', 'released')
+        if self.iteration_convention not in {'paper', 'released'}:
+            raise ValueError("iteration_convention must be 'paper' or 'released'")
+        if type(self.n_iters) is not int or self.n_iters < 0:
+            raise ValueError('n_iters must be a nonnegative integer')
+        if type(self.batch_size) is not int or self.batch_size < 1:
+            raise ValueError('batch_size must be a positive integer')
+        if type(self.constrained) is not bool:
+            raise ValueError('constrained must be boolean')
+        if self.seed is not None and type(self.seed) is not int:
+            raise ValueError('seed must be an integer or null')
+        self.actual_updates = self.n_iters + int(self.iteration_convention == 'released')
+        if (self.actual_updates < 1 or not math.isfinite(self.alpha) or self.alpha <= 0
+                or not math.isfinite(self.epsilon) or not 0 <= self.epsilon <= 1):
+            raise ValueError('Invalid VisualAdv update count, alpha or epsilon')
+        self._surrogate = None
+        self._universal_path = None
+        self._generated_images = {}
+        self._optimization = None
+        self._artifact_reused = False
+
+    @staticmethod
+    def normalize_behaviors(behaviors):
+        rows = []
+        for original in behaviors:
+            row = copy.deepcopy(original if isinstance(original, dict) else original.to_dict())
+            row['BehaviorID'] = row.get('BehaviorID') or row.get('behavior_id')
+            row['Behavior'] = row.get('Behavior') or row.get('instruction') or row.get('question')
+            rows.append(row)
+        validate_behaviors(rows)
+        return rows
+
+    def effective_config(self):
+        return {
+            'surrogate_profile': self.surrogate_profile,
+            'surrogate_backend': self.surrogate_backend, 'surrogate': self.surrogate,
+            'surrogate_revision': self.surrogate_revision,
+            'image_path': self.image_path, 'target_path': self.target_path,
+            'epsilon': self.epsilon, 'alpha': self.alpha, 'n_iters': self.n_iters,
+            'actual_updates': self.actual_updates, 'batch_size': self.batch_size,
+            'constrained': self.constrained, 'seed': self.seed,
+            'iteration_convention': self.iteration_convention,
+            'initialization': 'benign_plus_uniform_delta' if self.constrained else 'uniform_image',
+        }
+
+    def _load_targets(self):
+        with open(self.target_path, newline='', encoding='utf-8-sig') as source:
+            targets = [row[0] for row in csv.reader(source) if row and row[0].strip()]
+        if len(targets) < self.batch_size:
+            raise ValueError('VisualAdv requires at least batch_size nonempty targets')
+        return targets
+
+    def _load_surrogate(self):
+        if self._surrogate is None:
+            self._surrogate = load_surrogate(self.surrogate_profile, revision=self.surrogate_revision)
+        return self._surrogate
+
+    def _signature(self):
+        files = ['image_attacks/visual_adv/visual_adv.py', 'image_attacks/visual_adv/pgd.py',
+                 'multimodalmodels/ce_surrogate.py', 'multimodalmodels/surrogates.py',
+                 'multimodalmodels/loaders.py', 'multimodalmodels/registry.py']
+        if self.surrogate_backend == 'llava':
+            files += ['multimodalmodels/llava/llava_model.py', 'multimodalmodels/multimodalmodel.py']
+        return {
+            'effective_config': self.effective_config(),
+            'inputs': {'image_sha256': _sha256(self.image_path), 'targets_sha256': _sha256(self.target_path)},
+            'implementation_sha256': {name: _sha256(REPO_ROOT / name) for name in files},
+        }
+
+    def _verify_artifact(self, path, signature):
+        sidecar = Path(str(path) + '.lineage.json')
+        if not path.is_file() or not sidecar.is_file():
+            raise ValueError('VisualAdv image requires a complete .lineage.json sidecar; use a new output directory')
+        record = json.loads(sidecar.read_text(encoding='utf-8'))
+        if (record.get('schema_version') != 1 or record.get('attack') != 'VisualAdv'
+                or record.get('signature') != signature or record.get('image_sha256') != _sha256(path)
+                or record.get('optimization', {}).get('n_updates') != self.actual_updates):
+            raise ValueError('VisualAdv artifact/config/input/code fingerprint differs; use a new output directory')
+        with Image.open(path) as image:
+            image.verify()
+        return record
+
+    def _optimize(self, base_pil, targets):
+        from tqdm import tqdm
+        from .pgd import optimize_pixels
+
+        surrogate = self._load_surrogate()
+        base = surrogate.to_unit01(base_pil).clamp(0, 1).clone()
+        losses, gradients = [], []
+        gradient_hook = None
+
+        def loss_fn(image, batch):
+            nonlocal gradient_hook
+            def observe(gradient):
+                gradients.append({'finite': bool(gradient.isfinite().all()),
+                                  'nonzero': bool(gradient.count_nonzero()),
+                                  'mean_abs': float(gradient.detach().abs().mean())})
+            gradient_hook = image.register_hook(observe)
+            return surrogate.compute_loss_batch(image, batch, base_pil)
+
+        with tqdm(total=self.actual_updates, desc='VisualAdv') as progress_bar:
+            def progress(step, image, loss):
+                # Unconstrained PGD reuses the same leaf tensor across updates.
+                # Remove this update's observer before registering the next one.
+                gradient_hook.remove()
+                surrogate.zero_grad()
+                losses.append(loss)
+                progress_bar.update()
+                if step % 50 == 0:
+                    progress_bar.set_description(f'VisualAdv loss={loss:.4f}')
+            final = optimize_pixels(
+                base, targets, loss_fn, constrained=self.constrained, epsilon=self.epsilon,
+                alpha=self.alpha, steps=self.actual_updates, batch_size=self.batch_size,
+                seed=self.seed, callback=progress,
+            )
+        stats = {'n_updates': len(losses), 'target_count': len(targets), 'losses': losses,
+                 'pixel_gradients': gradients, 'pixel_min': float(final.min()),
+                 'pixel_max': float(final.max()), 'linf_from_base': float((final - base).abs().max()),
+                 'image_shape': list(final.shape)}
+        return final.squeeze(0).cpu(), stats
+
+    def prepare(self, out_dir):
+        """Optimize once or reuse only an authenticated, completed artifact."""
+        from torchvision.utils import save_image
+
+        targets = self._load_targets()
+        with Image.open(self.image_path) as image:
+            base = image.convert('RGB')
+        signature = self._signature()
+        output = Path(out_dir).resolve()
+        output.mkdir(parents=True, exist_ok=True)
+        destination = output / 'visual_adv.png'
+        explicit = self.config.get('adv_image')
+        source = Path(resolve_path(explicit)) if explicit else self._universal_path or destination
+        if explicit or source.exists() or Path(str(source) + '.lineage.json').exists():
+            record = self._verify_artifact(source, signature)
+            self._artifact_reused = True
+            if source != destination:
+                if destination.exists() or Path(str(destination) + '.lineage.json').exists():
+                    self._verify_artifact(destination, signature)
+                    if _sha256(destination) != record['image_sha256']:
+                        raise ValueError('Existing VisualAdv destination contains a different artifact')
+                else:
+                    shutil.copyfile(source, destination)
+                    _write_json(str(destination) + '.lineage.json', record)
+        else:
+            final, stats = self._optimize(base, targets)
+            handle = tempfile.NamedTemporaryFile(dir=output, prefix='.visual_adv.', suffix='.png', delete=False)
+            temporary = Path(handle.name)
+            handle.close()
+            try:
+                save_image(final, temporary)
+                os.replace(temporary, destination)
+            finally:
+                temporary.unlink(missing_ok=True)
+            record = {'schema_version': 1, 'attack': 'VisualAdv',
+                      'official_repo': self.official_repo, 'official_commit': self.official_commit,
+                      'signature': signature, 'image_sha256': _sha256(destination), 'optimization': stats}
+            _write_json(str(destination) + '.lineage.json', record)
+            self._artifact_reused = False
+        self._universal_path = destination
+        self._optimization = record['optimization']
+
+    def artifact_fingerprints(self):
+        return dict(self._generated_images)
 
     def generate_test_cases(self, behaviors, save_dir, verbose=False):
-        """
-        Generates test cases for the provided behaviors. The outputs of this method are passed to the
-        save_test_cases method, which saves test cases and logs to disk.
+        rows = self.normalize_behaviors(behaviors)
+        if not rows:
+            raise ValueError('VisualAdv needs at least one evaluation question')
+        self._load_targets()
+        with Image.open(self.image_path) as image:
+            image.verify()
+        output = Path(save_dir).resolve()
+        output.mkdir(parents=True, exist_ok=True)
+        with (output / '.Visual_Adv.lock').open('a') as lock:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            self.prepare(output / 'images')
+            cases = {row['BehaviorID']: ['visual_adv.png', row['Behavior']] for row in rows}
+            self._generated_images = {'images/visual_adv.png': _sha256(self._universal_path)}
+            metadata = {
+                'schema_version': 1, 'attack': 'VisualAdv', 'official_repo': self.official_repo,
+                'official_commit': self.official_commit, 'algorithm_fidelity': self.algorithm_fidelity,
+                'substitutes_model': True, 'paper_reproduction': False,
+                'effective_config': self.effective_config(), 'artifact_reused': self._artifact_reused,
+                'universal_image': 'images/visual_adv.png', 'image_sha256': _sha256(self._universal_path),
+                'optimization': self._optimization, 'n_behaviors': len(rows),
+                'behavior_ids': [row['BehaviorID'] for row in rows],
+            }
+            _write_json(output / 'Visual_Adv.json', cases)
+            _write_json(output / 'Visual_Adv_metadata.json', metadata)
+        if verbose:
+            print(f'VisualAdv: {len(rows)} questions share {portable_path(self._universal_path)}')
+        return cases
 
-        :param behaviors: a list of behavior dictionaries specifying the behaviors to generate test cases for
-        :param verbose: whether to print progress
-        :return: a dictionary of test cases, where the keys are the behavior IDs and the values are lists of test cases
-        """
 
-        test_cases = {}
-
-        if self.constrained:
-            adv_image = self.PGD_constrained(self.image_path)
-        else:
-            adv_image = self.PGD_unconstrained(self.image_path)
-
-        image_path = os.path.join(save_dir, 'images')
-        if not os.path.exists(image_path):
-            os.makedirs(image_path)
-
-        save_image(adv_image, os.path.join(image_path, 'bad_prompt.bmp'))
-        
-
-        for behavior_dict in tqdm(behaviors, total = len(behaviors)):           
-            behavior = behavior_dict['Behavior']
-            behavior_id = behavior_dict['BehaviorID']
-            if verbose:
-                print(f"Behavior: {behavior}")
-                print(f"Behavior ID: {behavior_id}")
-
-            current_test_case = ['bad_prompt.bmp', behavior]
-            test_cases[behavior_id] = current_test_case
-
-        save_path = os.path.join(save_dir, 'Visual_Adv.json')
-        os.makedirs(os.path.dirname(save_path), exist_ok=True) if os.path.dirname(save_path) else None
-        with open(save_path, 'w') as file:
-            json.dump(test_cases, file, indent=2)
-
-        return test_cases
-
-    def PGD_unconstrained(self, image_path):
-        """
-        :param image_path: the image path of clean image
-        :return: adv_image
-        """
-        img = Image.open(image_path).convert('RGB')
-        img = self.model.vis_processor(img).unsqueeze(0)
-
-        adv_noise = torch.rand_like(img).to(self.model.device) # [0,1]
-        adv_noise.requires_grad_(True)
-        adv_noise.retain_grad()
-
-        for t in tqdm(range(self.n_iters+1)):
-
-            batch_targets = random.sample(self.targets, self.batch_size)
-            x_adv = self.normalize(adv_noise)
-
-            target_loss = self.model.compute_loss_batch(x_adv, batch_targets)
-            target_loss.backward()
-
-            adv_noise.data = (adv_noise.data - self.alpha * adv_noise.grad.detach().sign()).clamp(0, 1)
-            adv_noise.grad.zero_()
-            self.model.model.zero_grad()
-
-            print("target_loss: %f" % (
-                target_loss.item())
-                  )
-
-            if t % 100 == 0:
-                print('######### Output - Iter = %d ##########' % t)
-                x_adv = self.normalize(adv_noise)
-
-                adv_img_prompt = self.denormalize(x_adv).detach().cpu()
-                adv_img_prompt = adv_img_prompt.squeeze(0)                                                                
-                # save_image(adv_img_prompt, '%s/bad_prompt_temp_%d.bmp' % (self.save_dir, t))
-        return adv_img_prompt
-
-    def PGD_constrained(self, image_path):
-        img_pil = Image.open(image_path).convert('RGB')
-
-        img = self.model.vis_processor(img_pil, return_tensors='pt')["pixel_values"].to(self.model.device)
-
-        adv_noise = torch.rand_like(img).to(self.model.device) * 2 * self.epsilon - self.epsilon
-        x = self.denormalize(img).clone().to(self.model.device)
-        adv_noise.data = (adv_noise.data + x.data).clamp(0, 1) - x.data
-
-        adv_noise.requires_grad_(True)
-        adv_noise.retain_grad()
-        self.model.model.requires_grad_(False)
-
-        pbar = tqdm(range(self.n_iters+1))
-
-        for t in pbar:
-            batch_targets = random.sample(self.targets, self.batch_size)
-
-            x_adv = x + adv_noise            
-            x_adv = self.normalize(x_adv)
-
-            target_loss = self.model.compute_loss_batch(x_adv, batch_targets, img_pil)
-            target_loss.backward()
-
-            adv_noise.data = (adv_noise.data - self.alpha * adv_noise.grad.detach().sign()).clamp(-self.epsilon, self.epsilon)
-            adv_noise.data = (adv_noise.data + x.data).clamp(0, 1) - x.data
-            adv_noise.grad.zero_()
-
-            pbar.set_description(f"target_loss: {target_loss.item():.4f}")
-
-            if t % 100 == 0:
-                
-                print('######### Output - Iter = %d ##########' % t)     
-                print("target_loss: %f" % (
-                target_loss.item())
-                  )
-                x_adv = x + adv_noise
-                x_adv = self.normalize(x_adv)           
-
-                adv_img_prompt = self.denormalize(x_adv).detach().cpu()
-                adv_img_prompt = adv_img_prompt.squeeze(0) 
-                # save_image(adv_img_prompt, '%s/bad_prompt_temp_%d.bmp' % (self.save_dir, t))
-        return adv_img_prompt
-    
-    def normalize(self, images):
-        mean = torch.tensor([0.48145466, 0.4578275, 0.40821073]).to(self.model.device)
-        std = torch.tensor([0.26862954, 0.26130258, 0.27577711]).to(self.model.device)
-        images = images - mean[None, :, None, None]
-        images = images / std[None, :, None, None]
-        return images
-
-    def denormalize(self, images):
-        mean = torch.tensor([0.48145466, 0.4578275, 0.40821073]).to(self.model.device)
-        std = torch.tensor([0.26862954, 0.26130258, 0.27577711]).to(self.model.device)
-        images = images * std[None, :, None, None]
-        images = images + mean[None, :, None, None]
-        return images
-    
-
+VisualAdvAttack = Visual_Adv
