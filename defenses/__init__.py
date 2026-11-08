@@ -10,6 +10,7 @@ DEFENSE_REGISTRY = {
     'JailGuard': ('defenses.jailguard', 'JailGuardDefense'),
     'CIDER': ('defenses.cider', 'CIDERDefense'),
     'AdaShield': ('defenses.adashield', 'AdaShieldDefense'),
+    'AsD': ('defenses.asd', 'AsDDefense'),
 }
 
 
