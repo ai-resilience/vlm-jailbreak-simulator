@@ -4,3 +4,7 @@ __pycache__/
 completions/
 results/
 test_cases/
+
+# Imported benchmark inputs and reusable method assets (kept local)
+/data/benchmarks/
+/data/method_assets/
