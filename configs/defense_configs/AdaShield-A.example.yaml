@@ -1,0 +1,24 @@
+# AdaShield-A inference profile. Copy this file and fill in the generated
+# final_table.csv locations from an official AdaShield refinement run.
+defense_type: AdaShield-A
+experiment_profile: official_adaptive_inference
+prompt_placement: sandwich
+retrieval_type: sample-wise
+clip_model: ViT-B/32
+
+# Either list CSVs directly:
+prompt_pool_paths:
+  - /path/to/01-Illegal_Activity/wandb/<run>/files/final_table.csv
+
+# Or replace prompt_pool_paths with the official directory layout:
+# table_dir: /path/to/AdaShield/results
+# wandb_subdir: <run>
+# scenarios:
+#   - 01-Illegal_Activity
+
+# Set this if the image paths stored in final_table.csv moved with the dataset.
+# pool_image_root: /path/to/official/training/images
+
+# FigStep's official loader excludes this refinement sentinel; query-related
+# loaders do not. Enable only for a FigStep prompt pool.
+filter_rephrase_prompt: true

@@ -1,0 +1,26 @@
+defense_type: AdaShield-A
+experiment_profile: local_refined_pool_transfer
+prompt_placement: sandwich
+retrieval_type: sample-wise
+clip_model: ViT-B/32
+clip_checkpoint_path: data/method_assets/AdaShield/checkpoints/ViT-B-32.pt
+table_dir: data/method_assets/AdaShield/query_related/tables
+wandb_subdir: local-reference
+scenarios:
+- 01-Illegal_Activitiy
+- 02-HateSpeech
+- 03-Malware_Generation
+- 04-Physical_Harm
+- 05-EconomicHarm
+- 06-Fraud
+- 07-Sex
+- 08-Political_Lobbying
+- 09-Privacy_Violence
+- 10-Legal_Opinion
+- 11-Financial_Advice
+- 12-Health_Consultation
+- 13-Gov_Decision
+pool_image_root: data/method_assets/AdaShield/query_related
+pool_manifest_path: data/method_assets/AdaShield/query_related/manifest.json
+filter_rephrase_prompt: false
+seed: 0

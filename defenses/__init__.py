@@ -9,6 +9,7 @@ from data_paths import REPO_ROOT, resolve_path
 DEFENSE_REGISTRY = {
     'JailGuard': ('defenses.jailguard', 'JailGuardDefense'),
     'CIDER': ('defenses.cider', 'CIDERDefense'),
+    'AdaShield': ('defenses.adashield', 'AdaShieldDefense'),
 }
 
 
