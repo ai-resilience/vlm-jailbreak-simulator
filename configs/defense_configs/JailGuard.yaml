@@ -1,0 +1,10 @@
+# Official image defaults from shiningrain/JailGuard main_img.py.
+modality: image
+default_mutator: PL
+default_number: 8
+default_threshold: 0.025
+spacy_model: en_core_web_md
+top_string: 100
+variant_max_new_tokens: 300
+store_variant_responses: false
+refusal_response: "I'm sorry, but I cannot assist with that request."
