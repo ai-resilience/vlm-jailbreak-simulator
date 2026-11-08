@@ -1,0 +1,14 @@
+experiment_profile: official
+aug: mixup
+lams:
+- 0.1
+- 0.2
+- 0.3
+- 0.4
+- 0.5
+- 0.6
+- 0.7
+- 0.8
+- 0.9
+seed: null
+harmless_dir: data/method_assets/JOOD/images/harmless

@@ -5,7 +5,7 @@ _method_mapping = {
     'FigStep': 'multi_attacks.figstep',
     'CS-DJ': ('multi_attacks.cs_dj', 'CSDJAttack'),
     'Hades': 'multi_attacks.hades',
-    'JOOD': 'multi_attacks.JOOD',
+    'JOOD': ('multi_attacks.JOOD', 'JOODAttack'),
     'BestOfN': 'multi_attacks.best_of_n',
     'Visual_Adv': 'image_attacks.visual_adv',
     'ImgJP': 'image_attacks.imgjp',
