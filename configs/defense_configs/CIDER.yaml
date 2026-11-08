@@ -1,0 +1,9 @@
+# PandragonXIII/CIDER at 3c08d7e2d52e27b47d1e428a030e8ffda5efae3e.
+experiment_profile: official
+default_threshold: -0.003936767578125
+cpnum: 8
+step: 50
+cuda: 0
+denoiser_path: data/method_assets/CIDER/checkpoints/256x256_diffusion_uncond.pt
+expected_denoiser_size: 2211383297
+verify_denoiser_md5: false
