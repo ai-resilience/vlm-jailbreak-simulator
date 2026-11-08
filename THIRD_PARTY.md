@@ -1,5 +1,11 @@
 # Third-Party Software, Models, Datasets, and Assets
 
+The shared model layer is implemented in `multimodalmodels/registry.py`,
+`loaders.py`, `surrogates.py`, and `targets/`. The target adapters were ported
+from our unified simulator's `core/targets/`; model IDs and default HF revisions
+are recorded in the registry. Model selection is connected through
+`configs/model_configs/models.yaml` and the existing completion CLI.
+
 This document inventories the third-party components that the
 **VLM-Jailbreak-Simulator** actually relies on **at runtime** — that is,
 components that are imported, vendored in this repository, downloaded as
@@ -38,11 +44,116 @@ authors.
 | Component (path in this repo)        | Upstream                                                                                                                                                       | Upstream License (as observed) |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
 | `multi_attacks/figstep/`             | [thuccslab/figstep](https://github.com/thuccslab/figstep)                                                                                                       | **MIT**                        |
-| `image_attacks/visual_adv/`          | [Unispac/Visual-Adversarial-Examples-Jailbreak-Large-Language-Models](https://github.com/Unispac/Visual-Adversarial-Examples-Jailbreak-Large-Language-Models)   | No explicit license            |
-| `image_attacks/imgjp/`, `image_attacks/deltajp/` | [abc03570128/Jailbreaking-Attack-against-Multimodal-Large-Language-Model](https://github.com/abc03570128/Jailbreaking-Attack-against-Multimodal-Large-Language-Model) | No explicit license            |
+| `multi_attacks/cs_dj/` | [TeamPigeonLab/CS-DJ](https://github.com/TeamPigeonLab/CS-DJ), commit `4577b05fe93e86030ba2e4c3339e3aa59cdbb5ff`; upstream notice retained in `multi_attacks/cs_dj/LICENSE` | **MIT** |
+| `image_attacks/visual_adv/`          | [Unispac/Visual-Adversarial-Examples-Jailbreak-Large-Language-Models](https://github.com/Unispac/Visual-Adversarial-Examples-Jailbreak-Large-Language-Models), reference commit `5fc9883cfa9b4183cf05c6eceef49e449e45e9c9`   | No explicit license            |
+| `image_attacks/imgjp/`, `image_attacks/deltajp/`, `image_attacks/jp_pgd.py` | [abc03570128/Jailbreaking-Attack-against-Multimodal-Large-Language-Model](https://github.com/abc03570128/Jailbreaking-Attack-against-Multimodal-Large-Language-Model), commit `fd98910ae4075fe587a1944095c00660aa24cc54` | No explicit license            |
 | `multi_attacks/hades/`               | [AoiDragon/HADES](https://github.com/AoiDragon/HADES)                                                                                                           | **MIT**                        |
 | `multi_attacks/best_of_n/`           | [jplhughes/bon-jailbreaking](https://github.com/jplhughes/bon-jailbreaking) — at runtime it also imports the upstream `bon` Python package                       | **MIT**                        |
-| `multi_attacks/JOOD/`                | [naver-ai/JOOD](https://github.com/naver-ai/JOOD) — full upstream `LICENSE` file is preserved at `multi_attacks/JOOD/LICENSE`                                    | **Apache-2.0**                 |
+| `multi_attacks/JOOD/`                | [naver-ai/JOOD](https://github.com/naver-ai/JOOD) at `4ca1368` — compact prompt/mixing port; full upstream `LICENSE` file is preserved at `multi_attacks/JOOD/LICENSE`                                    | **Apache-2.0**                 |
+| `multi_attacks/jps/` | [thu-coai/JPS](https://github.com/thu-coai/JPS), commit `beacbc58a359005e00a7e7f7b0b485eae64bb163`; reference simulator's JPS logic and dedicated Qwen2 adapter | MIT declared in upstream README; linked root LICENSE absent at the pinned commit |
+| `multi_attacks/mml/` | [wangyu-ovo/MML](https://github.com/wangyu-ovo/MML), commit `5966fca529011e8b5ccff61d70365997d6466abc`; released-image replay plus reference simulator renderer/CLAS integration | Upstream has no explicit license; prompt literals read at runtime from the hash-pinned local checkout |
+
+VisualAdv's pixel-space PGD is copied unchanged from our reference simulator's
+`image_attacks/visual_adv/pgd.py`. The BehaviorID adapter, shared CE surrogate
+integration and artifact checks are local integration code. The shared LLaVA
+and Qwen surrogates substitute for the original paper models; their use does
+not establish reproduction of the paper's ASR. The integration is implemented
+in `image_attacks/visual_adv/visual_adv.py`.
+
+ImgJP adapts the upstream `v1_mprompt.py`, `torchattacks/attack.py` normalization
+and `torchattacks/attacks/pgd_uap_v1.py` sequential updates, read from pinned
+local Git objects. It substitutes the shared surrogate and target-token CE
+for the upstream MiniGPT/full-conversation objective. DeltaJP ports our
+reference simulator's cross-class adaptation and its first-category-image
+policy. Split filtering, artifact checks and CLI metadata are integration code.
+
+JPS uses pinned `Qwen/Qwen2-VL-7B-Instruct` and
+`Qwen/Qwen2.5-14B-Instruct` through the shared loaders. Its training subset is
+the [RICommunity/TAP CSV](https://github.com/RICommunity/TAP/blob/main/data/advbench_subset.csv)
+linked by the JPS README. The exact CSV Git blob SHA-1, SHA-256 and TAP MIT
+notice are retained under `data/method_assets/JPS/`. The unpublished original
+base image is replaced explicitly by an existing local image. See
+`multi_attacks/jps/UPSTREAM.md`.
+
+MML's SafeBench released images, source metadata and local upstream checkout
+are under `data/method_assets/MML/`, outside tracked integration source. The
+renderer and clean-room prompts are reference simulator integration code;
+the upstream image generator is not released. NLTK's
+`averaged_perceptron_tagger` resource and a hash-bound SafeBench alignment map
+support generated word replacement and released-data matching respectively.
+Optional `mml_official` execution uses OpenAI targets and a CLAS chat judge;
+standard GPU verification uses the existing local targets and HarmBench.
+See `multi_attacks/mml/UPSTREAM.md`.
+
+CS-DJ generation uses `sentence-transformers/clip-ViT-L-14` and
+`Qwen/Qwen2.5-3B-Instruct` through the shared loaders. Their exact revisions
+are recorded in the model registry and method config. The CC3M image sample,
+Super Moods font and upstream asset metadata are under `data/method_assets/CS-DJ/`;
+their original asset terms remain applicable.
+
+The defense implementation `defenses/jailguard/defense.py` and its image mutation/
+similarity helpers follow [shiningrain/JailGuard](https://github.com/shiningrain/JailGuard)
+at `419e1d3d08f4d02998a11a687f925518d2d5dd0c` through the reference simulator.
+The pinned upstream tree has no software LICENSE file. The copied helper bytes,
+source hashes and integration changes are documented in
+`defenses/jailguard/UPSTREAM.md`.
+JailGuard loads spaCy's `en_core_web_md` 3.7.1 model package; its installed
+resource metadata and license notices remain with that package. The local
+initial spaCy runtime was 3.8.18; the package layout was also checked with
+spaCy 3.7.2. No additional NLP weights are redistributed in source.
+
+The `defenses/cider/` package follows
+[PandragonXIII/CIDER](https://github.com/PandragonXIII/CIDER) at
+`3c08d7e2d52e27b47d1e428a030e8ffda5efae3e` through the reference simulator.
+The upstream Apache-2.0 license is retained in `defenses/cider/LICENSE`.
+Its guided-diffusion inference files retain the OpenAI MIT notice in
+`defenses/cider/guided_diffusion/LICENSE`. The official 256×256 unconditional
+diffusion checkpoint is stored locally under `data/method_assets/CIDER/`,
+outside tracked source. Adaptations and hashes are documented in
+`defenses/cider/UPSTREAM.md`.
+
+The `defenses/adashield/` adapter follows
+[SaFo-Lab/AdaShield](https://github.com/SaFo-Lab/AdaShield) at
+`b6d02c6747bd6984a99ee2e1db1e52736a6a05cc` through the reference simulator.
+The pinned upstream tree has no root software LICENSE file.
+AdaShield-A uses the MIT-licensed OpenAI CLIP package pinned to
+`a1d071733d7111c9c014f024669f959182114e33`; its installed license remains
+with that dependency. The static prompt, locally refined 13B prompt pools,
+copied anchor images and verified CLIP checkpoint have provenance and hashes
+under `data/method_assets/AdaShield/`. These local pools are not author-released
+trained artifacts. Changes and verification are described in
+`defenses/adashield/UPSTREAM.md`.
+
+The `defenses/asd/` adapter follows
+[AngelAlita/AsD](https://github.com/AngelAlita/AsD) at
+`ba71efe0972c92e38da156ec76911f9122bbe12f` through the reference simulator.
+Its upstream MIT license text is preserved in `defenses/asd/LICENSE`.
+The released protective image is verified by SHA-256 and stored under
+`data/method_assets/AsD/patches/`, outside tracked source. Input transformation,
+asset provenance and adaptation details are documented in
+`defenses/asd/UPSTREAM.md`.
+
+The `defenses/vlmshield/` adapter and feature/classifier helpers follow
+[pgqihere/VLMShield](https://github.com/pgqihere/VLMShield) at
+`344ca14778383aef57315229118f7669454fb4bb` through the reference simulator.
+Its Apache-2.0 license is preserved in `defenses/vlmshield/LICENSE`.
+The released classifier is SHA-256 verified and stored under
+`data/method_assets/VLMShield/checkpoints/`, outside tracked source. The
+existing Transformers loader uses the pinned OpenAI CLIP ViT-L/14 snapshot.
+Integration changes and resource provenance are documented in
+`defenses/vlmshield/UPSTREAM.md`.
+
+The `compositions/` package adapts the original simulator's composition
+contracts, deterministic sampling, source-record schema and measured renderer.
+It invokes the already documented attack implementations and labels all
+composed samples `adapted_composition`, without claiming paper reproduction.
+The copied Noto Sans CJK font is verified against the original pinned
+`notofonts/noto-cjk` revision `f8d157532fbfaeda587e826d4cd5b21a49186f7c`.
+Its SIL Open Font License notice is retained as
+`data/method_assets/fonts/NotoSansCJK-OFL.txt`. JPS transfer assets retain their
+original result-manifest hashes; imported CS-DJ results record the source run
+and local contrast hashes. Composition details are documented in
+`compositions/README.md`.
 
 Upstream licenses verified against each project's `LICENSE` file (and
 README, for projects that ship no `LICENSE`) on GitHub at the time of
@@ -101,16 +212,17 @@ may impose their own commercial-use limitations.
 
 ## 4. Closed-Source APIs Called at Runtime
 
-The Hades and JOOD pipelines make remote calls to closed-source LLM
-APIs. Use of these APIs is governed by the provider's Terms of Service
+Hades and optional response grading make remote calls to closed-source LLM
+APIs. JOOD input generation runs locally. API use is governed by the provider's Terms of Service
 and pricing, not by this repository's MIT License.
 
 | Provider | Model identifier used in code                            | Used by              |
 | -------- | --------------------------------------------------------- | -------------------- |
 | OpenAI   | `gpt-3.5-turbo` (caption / keyword / category generation) | Hades attack         |
-| OpenAI   | `gpt-4-turbo-2024-04-09` (default JOOD target / proposer) | JOOD attack          |
+| OpenAI   | `gpt-4o-mini` (configurable quality judge) | Optional response grading |
 
-You must supply your own API key via `configs/api_keys.yaml`. The
+Hades reads API keys from `configs/api_keys.yaml`; response grading uses
+`OPENAI_API_KEY`. The
 provider's content, rate-limit, and acceptable-use policies apply
 independently of this repository's license.
 
@@ -124,16 +236,17 @@ upstream sources listed.
 
 | Component                                                  | Upstream                                                                                                | Upstream License (as observed) | Vendored here? |
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------ | -------------- |
-| HarmBench behavior datasets (`data/behavior_datasets/*.csv`, `data/multimodal_behavior_images/`, `data/optimizer_targets/`, `data/classifier_val_sets/`, `data/copyright_classifier_hashes/`) | [centerforaisafety/HarmBench](https://github.com/centerforaisafety/HarmBench) | MIT                            | Yes            |
-| AdvBench harmful-behavior CSVs (`data/advbench/`)          | [llm-attacks/llm-attacks](https://github.com/llm-attacks/llm-attacks)                                    | MIT                            | Yes            |
-| `data/derogatory_corpus.csv` (used by Visual_Adv / ImgJP)  | Derived from the Visual Adversarial Examples upstream repo (see §1)                                     | No explicit license            | Yes            |
-| `data/clean.jpeg` (Visual_Adv base image)                   | Per the Visual Adversarial Examples upstream repo                                                       | Refer to upstream              | Yes            |
+| HarmBench inputs and evaluation assets (`data/original/HarmBench/`, `data/original/optimizer_targets/`, `data/original/classifier_val_sets/`, `data/original/copyright_classifier_hashes/`) | [centerforaisafety/HarmBench](https://github.com/centerforaisafety/HarmBench) | MIT | Yes |
+| AdvBench harmful-behavior CSVs (`data/original/advbench/`, `data/benchmarks/advbench/`) | [llm-attacks/llm-attacks](https://github.com/llm-attacks/llm-attacks) | MIT | Yes |
+| `data/original/derogatory_corpus.csv` (used by Visual_Adv / ImgJP) | Derived from the Visual Adversarial Examples upstream repo (see §1) | No explicit license | Yes |
+| `data/original/clean.jpeg` (Visual_Adv base image) | Per the Visual Adversarial Examples upstream repo | Refer to upstream | Yes |
 
-> ℹ️ JOOD's `configs/method_configs/JOOD.yaml` additionally references
-> an external **AdvBenchM** image / prompt set (`datasets/AdvBenchM/...`).
-> AdvBenchM is **not** vendored in this repository; users must obtain it
-> from the JOOD upstream and comply with its terms before running the
-> JOOD pipeline.
+Imported benchmark inputs are stored in `data/benchmarks/`, and reusable attack
+resources in `data/method_assets/`. JOOD's configuration reads
+`data/method_assets/JOOD/`; the original public AdvBench-M release is stored
+separately in `data/benchmarks/AdvBenchM/`. These local data directories retain
+the source manifests, license notices and provenance records and are excluded
+from Git. See [DATA_LAYOUT.md](DATA_LAYOUT.md).
 
 ---
 
@@ -156,7 +269,7 @@ dependency tree.
 | `Pillow`                                   | [python-pillow/Pillow](https://github.com/python-pillow/Pillow)                                                | MIT-CMU / HPND    |
 | `PyYAML`                                   | [yaml/pyyaml](https://github.com/yaml/pyyaml)                                                                  | MIT               |
 | `httpx`                                    | [encode/httpx](https://github.com/encode/httpx)                                                                | BSD-3-Clause      |
-| `openai` (Python SDK; Hades + JOOD)        | [openai/openai-python](https://github.com/openai/openai-python)                                                | Apache-2.0        |
+| `openai` (Python SDK; Hades + optional response grading)        | [openai/openai-python](https://github.com/openai/openai-python)                                                | Apache-2.0        |
 | `tqdm`, `numpy`, `pandas`, `matplotlib`, `scikit-image` | (standard scientific Python stack)                                                                 | BSD / PSF / MIT (per upstream) |
 
 Other packages listed in `requirements.txt` (e.g., `peft`,
@@ -176,6 +289,12 @@ their own upstream licenses if you choose to use them.
 
 ---
 
+The StrongREJECT rubric and system prompt in `evaluation/evaluation_prompts/`
+are copied unchanged from [dsbowen/strong_reject](https://github.com/dsbowen/strong_reject)
+at revision `7a551d5b440ec7b75d4f6f5bb7c1719965b76b47` (MIT, Dillon Bowen).
+The directory includes the upstream license, source provenance and prompt hashes.
+Other quality rubrics and the JSON adapter are simulator code.
+
 ## 8. Notes for Users and Redistributors
 
 - This repository does **not** vendor most of the listed third-party
@@ -190,7 +309,7 @@ their own upstream licenses if you choose to use them.
   classifier and the LLaVA v1.5 weights) impose restrictions beyond
   permissive open-source norms. Do not assume commercial use is
   permitted.
-- The OpenAI APIs used by Hades and JOOD are subject to OpenAI's Terms
+- The OpenAI APIs used by Hades and optional response grading are subject to OpenAI's Terms
   of Use, content policy, and pricing, none of which are granted by this
   repository's MIT License.
 - If you redistribute binaries, containers, fine-tuned weights,
