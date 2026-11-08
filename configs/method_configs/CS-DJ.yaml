@@ -1,0 +1,39 @@
+# Released CS-DJ best-method experiment (TeamPigeonLab/CS-DJ @ 4577b05f).
+# The paper experiment retrieves from a 10,000-image sample of
+# LLaVA-CC3M-Pretrain-595K. The upstream font is required: no fallback font is
+# accepted by this profile.
+experiment_profile: official
+image_dir: data/method_assets/CS-DJ/llava_images
+seed: 0
+num_images: 10000
+retrieval_count: 15
+collage_image_count: 9
+subquestion_count: 3
+
+embedding_model: sentence-transformers/clip-ViT-L-14
+embedding_revision: 1b4b2e899178706d1b9905460ac21de1e0ba86a5
+embedding_batch_size: 32
+show_embedding_progress: true
+
+split_model: Qwen/Qwen2.5-3B-Instruct
+split_revision: aa8e72537993ba99e69dfaafa59ed015b17504d1
+split_max_new_tokens: 200
+split_max_retries: 6
+split_do_sample: true
+split_temperature: 1.0
+
+tile_width: 500
+tile_height: 500
+images_per_row: 3
+text_font_size: 50
+number_font_size: 20
+font_path: data/method_assets/CS-DJ/Super Moods.ttf
+number_font_path: null
+strict_font: true
+
+# Upstream experiment metadata. Choose the current victim and judge through
+# generate_completions.py and evaluate_completions.py.
+official_target_model: gpt-4o-mini
+official_target_temperature: 0.1
+official_target_max_tokens: 1000
+official_judge: PKU-Alignment/beaver-dam-7b

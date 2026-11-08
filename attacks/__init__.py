@@ -3,6 +3,7 @@ import sys
 
 _method_mapping = {
     'FigStep': 'multi_attacks.figstep',
+    'CS-DJ': ('multi_attacks.cs_dj', 'CSDJAttack'),
     'Hades': 'multi_attacks.hades',
     'JOOD': 'multi_attacks.JOOD',
     'BestOfN': 'multi_attacks.best_of_n',
